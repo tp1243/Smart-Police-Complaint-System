@@ -8,7 +8,7 @@ import { complaintsApi } from '../services/complaints'
 import { api, supportApi,  type ProfileUser } from '../services/api'
 import { notificationsApi } from '../services/notifications'
 import { connectRealtime } from '../services/realtime'
-import { FiHelpCircle, FiMessageCircle, FiFileText, FiStar, FiPhone, FiBookOpen, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiPaperclip, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo } from 'react-icons/fi'
+import { FiHelpCircle, FiMessageCircle, FiFileText, FiStar, FiPhone, FiBookOpen, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiPaperclip, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo, FiMenu } from 'react-icons/fi'
 import { AnimatePresence, motion } from 'framer-motion'
 import jsPDF from 'jspdf'
 import type { Complaint, ComplaintStatus, NotificationItem } from '../types'
@@ -142,7 +142,7 @@ export default function UserDashboard() {
       <DashboardNavbar token={token} username={username} onSearch={handleSearch} onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(prev => !prev)} sidebarOpen={sidebarOpen} />
       {/* Mobile-only hamburger placed after navbar, aligned left */}
       <button className="mobile-hamburger" aria-label={sidebarOpen ? 'Close menu' : 'Open menu'} onClick={() => setSidebarOpen(prev => !prev)}>
-        {sidebarOpen ? 'Close Menu' : 'Menu'}
+        {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
       </button>
       <div className="dash-body">
         <DashboardSidebar active={section} onChange={(key) => { setSection(key); setSidebarOpen(false); }} />
