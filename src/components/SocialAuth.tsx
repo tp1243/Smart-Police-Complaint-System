@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FaGoogle, FaApple, FaGithub } from 'react-icons/fa'
 
-const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5175/api'
+const API_URL = (import.meta.env.VITE_API_URL as string) || 'https://smart-police-complaint-system.onrender.com/api'
 
 type Providers = { google: boolean; github: boolean; apple: boolean }
 

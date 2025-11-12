@@ -2,12 +2,12 @@ import { io, Socket } from 'socket.io-client'
 import { API_URL } from './api'
 
 function getSocketBaseUrl() {
-  // Derive Socket.IO base from API_URL; e.g., http://localhost:5175/api -> http://localhost:5175
+  // Derive Socket.IO base from API_URL; e.g., https://smart-police-complaint-system.onrender.com/api -> https://smart-police-complaint-system.onrender.com
   try {
-    if (!API_URL) return 'http://localhost:5175'
+    if (!API_URL) return 'https://smart-police-complaint-system.onrender.com'
     return API_URL.replace(/\/api$/, '')
   } catch {
-    return 'http://localhost:5175'
+    return 'https://smart-police-complaint-system.onrender.com'
   }
 }
 

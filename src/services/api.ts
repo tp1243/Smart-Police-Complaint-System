@@ -2,7 +2,7 @@ export type AuthResponse = { token: string; user: { id: string; username: string
 export type AuthPoliceResponse = { token: string; officer: { id: string; username: string; email: string; station: string } }
 export type ProfileUser = { id: string; username: string; email: string; phone?: string; address?: string; avatarUrl?: string }
 
-export const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5175/api'
+export const API_URL = (import.meta.env.VITE_API_URL as string) || 'https://smart-police-complaint-system.onrender.com/api'
 
 export async function request<T>(path: string, options: RequestInit): Promise<T> {
   // Ensure default headers are preserved when caller supplies headers
