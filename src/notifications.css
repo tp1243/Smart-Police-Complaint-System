@@ -1,0 +1,78 @@
+/* Shared styles for notifications list and modern search */
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.notif-item.unread {
+  border-color: var(--primary);
+}
+
+.notif-item .left {
+  flex: 1;
+}
+
+.notif-item .title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.notif-item .meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.notif-item .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search.modern {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.search.modern input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+}
+
+.search.modern .clear-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.filters .pill {
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .notif-item { flex-direction: column; align-items: stretch; }
+  .notif-item .right { justify-content: flex-start; }
+  .search.modern { gap: 6px; padding: 10px 10px; }
+}
