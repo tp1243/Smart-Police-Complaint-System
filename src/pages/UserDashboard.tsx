@@ -416,7 +416,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
 
   // Camera capture state and helpers
   const [cameraActive, setCameraActive] = useState(false)
-  const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null)
+  const [, setCapturedDataUrl] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -625,7 +625,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     return { lat: lat / wsum, lng: lng / wsum };
   };
 
-  const applyPosition = (position: GeolocationPosition, source: 'gps' | 'network') => {
+  const applyPosition = (position: GeolocationPosition) => {
     const { latitude, longitude, accuracy } = position.coords;
     const timestamp = position.timestamp || Date.now();
     // Simple outlier rejection to avoid big jumps into creek/water with poor accuracy
@@ -687,7 +687,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        applyPosition(position, 'gps');
+        applyPosition(position);
         if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
           bestPosition = position;
         }
@@ -710,7 +710,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
           alert('GPS signal unavailable. Trying network-based location.');
           // Try a network-based fallback
           navigator.geolocation.getCurrentPosition(
-            (pos) => { applyPosition(pos, 'network'); },
+            (pos) => { applyPosition(pos); },
             (err) => { console.error('Network fallback failed:', err); setLocStatus('unavailable'); },
             { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
           );
@@ -718,7 +718,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
           setLocStatus('timeout');
           alert('GPS timeout. Trying network-based location.');
           navigator.geolocation.getCurrentPosition(
-            (pos) => { applyPosition(pos, 'network'); },
+            (pos) => { applyPosition(pos); },
             (err) => { console.error('Network fallback failed:', err); setLocStatus('unavailable'); },
             { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
           );
@@ -734,7 +734,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     setTimeout(() => {
       navigator.geolocation.clearWatch(watchId);
       if (bestPosition) {
-        applyPosition(bestPosition, 'gps');
+        applyPosition(bestPosition);
         setLocating(false);
         setLocStatus((bestPosition.coords.accuracy || 9999) <= 10 ? 'accurate' : 'inaccurate');
       } else {
@@ -749,7 +749,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
         } else {
           setLocStatus('timeout');
           navigator.geolocation.getCurrentPosition(
-            (pos) => { applyPosition(pos, 'network'); setLocating(false); },
+            (pos) => { applyPosition(pos); setLocating(false); },
             (err) => { console.error('Network fallback failed:', err); setLocating(false); setLocStatus('unavailable'); },
             { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
           );
@@ -948,16 +948,7 @@ function MapView({ items }: { items: Complaint[] }) {
   )
 }
 
-function NearestStation({ lat, lng }: { lat: number; lng: number }) {
-  const stations = [
-    { name: 'Central Station', lat: lat + 0.02, lng: lng + 0.01 },
-    { name: 'East Station', lat: lat - 0.01, lng: lng + 0.02 },
-    { name: 'West Station', lat: lat + 0.01, lng: lng - 0.02 },
-  ]
-  function dist(a: number, b: number) { return Math.abs(a - b) }
-  const nearest = stations.reduce((p, s) => (dist(s.lat, lat) + dist(s.lng, lng)) < (dist(p.lat, lat) + dist(p.lng, lng)) ? s : p)
-  return <span title={`Nearest: ${nearest.name}`}>{nearest.name}</span>
-}
+
 
 function NotificationsPanel({ token }: { token: string }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
@@ -1424,7 +1415,7 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
   const [rating, setRating] = useState<number>(0)
   const [text, setText] = useState<string>('')
   const [anonymous, setAnonymous] = useState<boolean>(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [, setSubmitted] = useState(false)
   const [stats, setStats] = useState<{ average: number; count: number }>({ average: 0, count: 0 })
   const [list, setList] = useState<Array<{ id: string; username: string; text: string; rating: number; createdAt: string }>>([])
   const [showOverall, setShowOverall] = useState<boolean>(false)
