@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FiBell, FiSearch, FiUser, FiMoon, FiSun, FiMenu, FiX } from 'react-icons/fi'
+import { FiBell, FiSearch, FiUser, FiMoon, FiSun } from 'react-icons/fi'
 import BrandIcon from './BrandIcon'
 import { notificationsApi } from '../services/notifications'
 import type { NotificationItem } from '../types'
@@ -15,7 +15,7 @@ type Props = {
   sidebarOpen?: boolean
 }
 
-export default function DashboardNavbar({ token, username, onSearch, onLogout, onToggleSidebar, sidebarOpen }: Props) {
+export default function DashboardNavbar({ token, username, onSearch, onLogout}: Props) {
   const [q, setQ] = useState('')
   const [openProfile, setOpenProfile] = useState(false)
   const [openBell, setOpenBell] = useState(false)

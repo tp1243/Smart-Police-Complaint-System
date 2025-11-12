@@ -5,7 +5,7 @@ import DashboardSidebar from '../components/DashboardSidebar'
 import ProfileSettings from './ProfileSettings'
 import Analytics from '../components/Analytics'
 import { complaintsApi } from '../services/complaints'
-import { api, supportApi, type AuthResponse, type ProfileUser } from '../services/api'
+import { api, supportApi,  type ProfileUser } from '../services/api'
 import { notificationsApi } from '../services/notifications'
 import { connectRealtime } from '../services/realtime'
 import { FiHelpCircle, FiMessageCircle, FiFileText, FiStar, FiPhone, FiBookOpen, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiPaperclip, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo } from 'react-icons/fi'
@@ -135,9 +135,6 @@ export default function UserDashboard() {
     }
   }, [section, loading, error, stats, complaints, profile])
 
-  function handleSidebarChange(key: string) {
-    setSection(key)
-  }
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   return (
@@ -186,11 +183,10 @@ function Overview({ stats, complaints }: { stats: Record<string, number>; compla
 
 function ComplaintsTable({ items }: { items: Complaint[] }) {
   const [statusFilter, setStatusFilter] = useState<string>('')
-  const [typeFilter, setTypeFilter] = useState<string>('')
   const [q, setQ] = useState<string>('')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest')
   const filtered = items
-    .filter(c => (!statusFilter || c.status === statusFilter) && (!typeFilter || c.type === typeFilter))
+    .filter(c => (!statusFilter || c.status === statusFilter))
     .filter(c => !q || (c.title || '').toLowerCase().includes(q.toLowerCase()) || (c.description || '').toLowerCase().includes(q.toLowerCase()) || (c._id || '').includes(q))
     .sort((a, b) => {
       const da = new Date(a.createdAt || 0).getTime()

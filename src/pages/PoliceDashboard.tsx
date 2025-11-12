@@ -69,7 +69,7 @@ export default function PoliceDashboard() {
     }
   }, [section, token, officer])
 
-  function handleSearch(q: string) {
+  function handleSearch(_q: string) {
     setSection('active')
     // The PoliceComplaints component handles its own search internally.
     // Here we only switch to the Active Complaints view.

@@ -1,5 +1,5 @@
-import { FiHome, FiList, FiClock, FiCheckCircle, FiMap, FiBarChart2, FiMessageSquare, FiAlertTriangle, FiUsers, FiSettings, FiHelpCircle, FiChevronsLeft, FiChevronsRight, FiLogOut, FiBell } from 'react-icons/fi'
-import { useState } from 'react'
+import { FiHome, FiList, FiClock, FiCheckCircle, FiSettings, FiLogOut, FiBell } from 'react-icons/fi'
+// import { useState } from 'react'
 
 type Props = {
   active: string

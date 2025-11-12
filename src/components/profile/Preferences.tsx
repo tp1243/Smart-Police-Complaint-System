@@ -30,7 +30,7 @@ const Preferences = () => {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     
     if (name in preferences.notifications) {
       const isChecked = (e.target as HTMLInputElement).checked;
