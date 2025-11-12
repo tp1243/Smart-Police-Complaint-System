@@ -17,7 +17,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(passport.initialize())
 
-const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'http://localhost:5174' } = process.env
+const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'https://smart-police-complaint-system.vercel.app' } = process.env
 if (!MONGO_URL) {
   console.error('Missing MONGO_URL in .env')
   process.exit(1)
