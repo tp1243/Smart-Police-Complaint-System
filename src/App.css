@@ -467,6 +467,9 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
   .dash-body { grid-template-columns: 240px 1fr; }
 }
 @media (max-width: 768px) {
+  /* Reflow navbar to two columns on mobile: brand left, user info right */
+  .dash-navbar { grid-template-columns: auto 1fr; }
+  .dash-right { justify-self: end; gap: 8px; }
   .dash-body { grid-template-columns: 1fr; }
   .dash-sidebar { display: none; }
   .dash-navbar .search { width: clamp(220px, 70vw, 520px); }
@@ -477,6 +480,7 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
   /* Tighten spacing on right cluster for mobile */
   .dash-right { gap: 10px; }
   .dash-navbar .user-label { display: inline-block; }
+  .dash-navbar .user-label { max-width: 48vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dash-right .btn.toggle, .dash-right select.btn, .dash-right .bell { display: none; }
   /* Use the dedicated mobile hamburger below navbar; hide navbar hamburger to avoid duplication */
   .dash-navbar .hamburger { display: none; }
