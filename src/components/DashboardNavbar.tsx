@@ -60,7 +60,7 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
       <div className="dash-left">
         <div className="logo" aria-label="Smart Police Complaint System (SPCS)">
           <BrandIcon height={24} className="logo-icon" title="SPCS logo" />
-          <span className="logo-text">CIVICSHIELD</span>
+          <span className="logo-text">SPCS</span>
         </div>
       </div>
       <div className="dash-center">
