@@ -195,10 +195,10 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
     })
   if (items.length === 0) return <div className="panel"><div className="muted">No complaints yet.</div></div>
   return (
-    <div>
-      <div className="panel" style={{ marginBottom: 10 }}>
-        <div className="table-toolbar">
-          <div className="search">
+    <>
+      <div>
+        <div className="panel" style={{ marginBottom: 10 }}>
+          <div className="table-toolbar">
             <FiSearch />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title, ID, or description" />
           </div>
@@ -217,70 +217,70 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
             </div>
           </div>
         </div>
-      </div>
-      <div className="table">
-        <div className="thead">
-          <div>ID</div><div>Title</div><div>Filed</div><div>Status</div><div>Station</div><div>Actions</div>
-        </div>
-        {filtered.map((c) => {
-          const distance = typeof c.nearestDistanceKm === 'number' ? `${c.nearestDistanceKm.toFixed(1)} km` : ''
-          const filed = new Date(c.createdAt || '').toLocaleDateString()
-          const station = c.station ? `${c.station}${distance ? ` (${distance})` : ''}` : '-'
-          return (
-            <div className="trow" key={c._id}>
-              <div title={c._id}>{c._id?.slice(-6)}</div>
-              <div className="title-cell" title={c.title}>
-                {c.photoUrl ? (
-                  <img className="thumb" src={c.photoUrl} alt="complaint photo" />
-                ) : (
-                  <span className="thumb placeholder" aria-hidden />
-                )}
-                <span className="title-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</span>
-              </div>
-              <div>{filed}</div>
-              <div><StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} /></div>
-              <div title={station}>{station}</div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <DetailsModalButton complaint={c} />
-                <DownloadPdfButton complaint={c} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      {/* Mobile cards view for complaints */}
-      <div className="complaints-cards">
-        {filtered.map((c) => {
-          const distance = typeof c.nearestDistanceKm === 'number' ? `${c.nearestDistanceKm.toFixed(1)} km` : ''
-          const filed = new Date(c.createdAt || '').toLocaleDateString()
-          const station = c.station ? `${c.station}${distance ? ` (${distance})` : ''}` : '-'
-          return (
-            <div className="card complaint-card" key={c._id}>
-              <div className="head">
-                <div className="meta">
-                  <span title={c._id}>#{c._id?.slice(-6)}</span>
-                  <span>{filed}</span>
-                  <span title={station}>{station}</span>
+        <div className="table">
+          <div className="thead">
+            <div>ID</div><div>Title</div><div>Filed</div><div>Status</div><div>Station</div><div>Actions</div>
+          </div>
+          {filtered.map((c) => {
+            const distance = typeof c.nearestDistanceKm === 'number' ? `${c.nearestDistanceKm.toFixed(1)} km` : ''
+            const filed = new Date(c.createdAt || '').toLocaleDateString()
+            const station = c.station ? `${c.station}${distance ? ` (${distance})` : ''}` : '-'
+            return (
+              <div className="trow" key={c._id}>
+                <div title={c._id}>{c._id?.slice(-6)}</div>
+                <div className="title-cell" title={c.title}>
+                  {c.photoUrl ? (
+                    <img className="thumb" src={c.photoUrl} alt="complaint photo" />
+                  ) : (
+                    <span className="thumb placeholder" aria-hidden />
+                  )}
+                  <span className="title-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</span>
                 </div>
-                <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
+                <div>{filed}</div>
+                <div><StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} /></div>
+                <div title={station}>{station}</div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <DetailsModalButton complaint={c} />
+                  <DownloadPdfButton complaint={c} />
+                </div>
               </div>
-              <div className="title-row" title={c.title}>
-                {c.photoUrl ? (
-                  <img className="thumb" src={c.photoUrl} alt="complaint photo" />
-                ) : (
-                  <span className="thumb placeholder" aria-hidden />
-                )}
-                <span className="title-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</span>
+            )
+          })}
+        </div>
+        {/* Mobile cards view for complaints */}
+        <div className="complaints-cards">
+          {filtered.map((c) => {
+            const distance = typeof c.nearestDistanceKm === 'number' ? `${c.nearestDistanceKm.toFixed(1)} km` : ''
+            const filed = new Date(c.createdAt || '').toLocaleDateString()
+            const station = c.station ? `${c.station}${distance ? ` (${distance})` : ''}` : '-'
+            return (
+              <div className="card complaint-card" key={c._id}>
+                <div className="head">
+                  <div className="meta">
+                    <span title={c._id}>#{c._id?.slice(-6)}</span>
+                    <span>{filed}</span>
+                    <span title={station}>{station}</span>
+                  </div>
+                  <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
+                </div>
+                <div className="title-row" title={c.title}>
+                  {c.photoUrl ? (
+                    <img className="thumb" src={c.photoUrl} alt="complaint photo" />
+                  ) : (
+                    <span className="thumb placeholder" aria-hidden />
+                  )}
+                  <span className="title-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</span>
+                </div>
+                <div className="actions">
+                  <DetailsModalButton complaint={c} />
+                  <DownloadPdfButton complaint={c} />
+                </div>
               </div>
-              <div className="actions">
-                <DetailsModalButton complaint={c} />
-                <DownloadPdfButton complaint={c} />
-              </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -416,7 +416,6 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
 
   // Camera capture state and helpers
   const [cameraActive, setCameraActive] = useState(false)
-  const [, setCapturedDataUrl] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -475,7 +474,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
           await new Promise(r => setTimeout(r, 300))
         }
       }
-      setCapturedDataUrl(null)
+
     } catch (err: any) {
       setSubmitError(err?.message ? String(err.message) : 'Camera permission denied or unavailable.')
     }
@@ -529,7 +528,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
         let url = canvas.toDataURL('image/jpeg', quality)
         while (estimateDataUrlSize(url) > MAX_SIZE && quality > 0.4) { quality -= 0.2; url = canvas.toDataURL('image/jpeg', quality) }
         if (estimateDataUrlSize(url) > MAX_SIZE) { setSubmitError('Captured image too large. Try again.'); return }
-        setCapturedDataUrl(url)
+  // removed setCapturedDataUrl (unused)
         setForm(prev => ({ ...prev, photoUrl: url }))
         setFileName(`camera_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`)
         return
@@ -565,7 +564,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     let url = canvas.toDataURL('image/jpeg', quality)
     while (estimateDataUrlSize(url) > MAX_SIZE && quality > 0.4) { quality -= 0.2; url = canvas.toDataURL('image/jpeg', quality) }
     if (estimateDataUrlSize(url) > MAX_SIZE) { setSubmitError('Captured image too large. Try again.'); return }
-    setCapturedDataUrl(url)
+  // removed setCapturedDataUrl (unused)
     setForm(prev => ({ ...prev, photoUrl: url }))
     setFileName(`camera_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`)
   }
@@ -1415,7 +1414,6 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
   const [rating, setRating] = useState<number>(0)
   const [text, setText] = useState<string>('')
   const [anonymous, setAnonymous] = useState<boolean>(false)
-  const [, setSubmitted] = useState(false)
   const [stats, setStats] = useState<{ average: number; count: number }>({ average: 0, count: 0 })
   const [list, setList] = useState<Array<{ id: string; username: string; text: string; rating: number; createdAt: string }>>([])
   const [showOverall, setShowOverall] = useState<boolean>(false)
@@ -1424,7 +1422,6 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
   async function submit() {
     if (!rating) { alert('Please select a rating'); return }
     await supportApi.feedbackSubmit({ rating, text, anonymous, userId: anonymous ? null : profile?.id || null })
-    setSubmitted(true)
     const s = await supportApi.feedbackStats(); setStats(s)
     const r = await supportApi.feedbackList().catch(() => null); if (r) setList(r.feedbacks)
   }
@@ -1474,7 +1471,7 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
       </div>
       <div className="actions">
         <button className="btn primary" onClick={submit} disabled={!rating}>Send Feedback</button>
-        <button className="btn ghost" onClick={() => { setRating(0); setText(''); setAnonymous(false); setSubmitted(false) }}>Reset</button>
+        <button className="btn ghost" onClick={() => { setRating(0); setText(''); setAnonymous(false) }}>Reset</button>
       </div>
       {showOverall && (
         <div className="feedback-stats" aria-live="polite">
