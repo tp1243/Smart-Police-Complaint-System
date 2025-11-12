@@ -541,6 +541,17 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
 /* Camera control alignment and preview aesthetics */
 .panel.form .camera-control { display: inline-flex; align-items: center; gap: 10px; }
 .panel.form .camera-control video { border-radius: 8px; border: 1px solid #24324a; background: #000; }
+/* Hide camera controls on mobile to remove 'Click Photo' option */
+@media (max-width: 768px) {
+  .panel.form .camera-control { display: none; }
+}
+/* Mobile image preview with dismiss button */
+.preview-thumb-wrap { position: relative; display: inline-block; }
+.preview-thumb { max-width: 180px; max-height: 140px; border-radius: 10px; border: 1px solid var(--border); }
+.preview-clear { display: none; position: absolute; top: -8px; right: -8px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; width: 32px; height: 32px; align-items: center; justify-content: center; }
+@media (max-width: 768px) {
+  .preview-clear { display: inline-flex; }
+}
 .panel.form .thumb { width: 48px; height: 48px; border-radius: 8px; border: 1px solid #24324a; }
 
 /* Global toast styles for real-time notifications */

@@ -418,6 +418,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   const [cameraActive, setCameraActive] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   // Stop camera on component unmount to release device
   useEffect(() => {
@@ -865,7 +866,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       <div className="file-row">
         <label className="file">
           <span className="file-label">Upload Photo</span>
-          <input type="file" accept="image/*" onChange={handleFile} />
+          <input type="file" accept="image/*" onChange={handleFile} ref={fileInputRef} />
         </label>
         {fileName && <span className="file-name" title={fileName}>{fileName}</span>}
         {/* Camera capture control beside upload */}
@@ -886,7 +887,21 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
           <canvas ref={canvasRef} style={{ display: 'none' }} />
         </div>
         {form.photoUrl && (
-          <img src={form.photoUrl} alt="image preview" className="preview-thumb" />
+          <div className="preview-thumb-wrap">
+            <img src={form.photoUrl} alt="image preview" className="preview-thumb" />
+            <button
+              type="button"
+              className="preview-clear"
+              aria-label="Remove photo"
+              onClick={() => {
+                setForm(prev => ({ ...prev, photoUrl: '' }))
+                setFileName('')
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+            >
+              <FiX />
+            </button>
+          </div>
         )}
         {!cameraActive && submitError && (
           <span className="form-error" role="alert" style={{ marginLeft: 8 }}>{submitError}</span>
