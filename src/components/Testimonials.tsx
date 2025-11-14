@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "../Testimonials.css";
 import { FaUserShield, FaUserTie, FaUserFriends, FaQuoteLeft } from "react-icons/fa";
+import { supportApi } from "../services/api";
 
 const testimonials = [
   {
@@ -32,16 +33,47 @@ const testimonials = [
 
 export default function Testimonials() {
   const [index, setIndex] = useState(0);
+  const [feedbacks, setFeedbacks] = useState<Array<{ id: string; username: string; text: string; rating: number; createdAt: string }>>([]);
 
+  // Fetch latest feedback entries from Support API
   useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 2) % testimonials.length), 6000);
-    return () => clearInterval(id);
+    let active = true;
+    supportApi
+      .feedbackList()
+      .then((r) => {
+        if (!active) return;
+        setFeedbacks((r.feedbacks || []).filter((f) => (f.text || "").trim().length > 0));
+      })
+      .catch(() => {
+        // Fail silently and keep static testimonials as fallback
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const visibleTestimonials = [
-    testimonials[index],
-    testimonials[(index + 1) % testimonials.length],
-  ];
+  // Choose dynamic feedback if available, otherwise fallback to static testimonials
+  const items = useMemo(() => {
+    if (feedbacks.length > 0) {
+      return feedbacks.map((f) => ({
+        author: f.username || "User",
+        role: (f.username || "User") === "Anonymous" ? "Citizen" : "User",
+        text: f.text,
+        icon: <FaUserFriends />,
+      }));
+    }
+    return testimonials;
+  }, [feedbacks]);
+
+  const step = items.length >= 2 ? 2 : 1;
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + step) % items.length), 6000);
+    return () => clearInterval(id);
+  }, [items.length, step]);
+
+  const visibleTestimonials = items.length >= 2
+    ? [items[index], items[(index + 1) % items.length]]
+    : [items[index]];
 
   return (
     <section id="testimonials" className="testimonials-section">

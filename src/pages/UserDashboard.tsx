@@ -128,6 +128,8 @@ export default function UserDashboard() {
         return <NotificationsPanel token={token} />
       case 'support':
         return <SupportPanel token={token} profile={profile} />
+      case 'feedback':
+        return <SupportPanel token={token} profile={profile} defaultTab="feedback" />
       case 'profile':
         return <ProfileSettings />
       default:
@@ -1080,8 +1082,8 @@ function NotificationsPanel({ token }: { token: string }) {
   )
 }
 
-function SupportPanel({ token, profile }: { token: string; profile: ProfileUser | null }) {
-  const [tab, setTab] = useState<'faq' | 'ticket' | 'chat' | 'contact' | 'feedback' | 'guides'>('faq')
+function SupportPanel({ token, profile, defaultTab = 'faq' }: { token: string; profile: ProfileUser | null; defaultTab?: 'faq' | 'ticket' | 'chat' | 'contact' | 'feedback' | 'guides' }) {
+  const [tab, setTab] = useState<'faq' | 'ticket' | 'chat' | 'contact' | 'feedback' | 'guides'>(defaultTab)
   return (
     <div className="panel support-panel">
       <div className="support-header">

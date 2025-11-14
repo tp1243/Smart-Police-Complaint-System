@@ -1,4 +1,4 @@
-import { FiHome, FiAlertCircle, FiList, FiMap, FiBell, FiUser, FiHelpCircle, FiLogOut } from 'react-icons/fi'
+import { FiHome, FiAlertCircle, FiList, FiMap, FiBell, FiUser, FiHelpCircle, FiStar, FiLogOut } from 'react-icons/fi'
 
 type Props = {
   active: string
@@ -13,6 +13,7 @@ const items = [
   { key: 'notifications', label: 'Notifications / Updates', icon: FiBell },
   { key: 'profile', label: 'Profile Settings', icon: FiUser },
   { key: 'support', label: 'Help & Support', icon: FiHelpCircle },
+  { key: 'feedback', label: 'Feedback', icon: FiStar },
 ]
 
 export default function DashboardSidebar({ active, onChange }: Props) {
