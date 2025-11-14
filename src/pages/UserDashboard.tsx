@@ -220,12 +220,12 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
             </div>
           </div>
         </div>
-        {/* Mobile-only professional search bar in its own card */}
-        <div className="panel mobile-only mobile-search-card" style={{ marginBottom: 10 }}>
+        {/* Mobile-only professional search bar without background card */}
+        <div className="mobile-only" style={{ marginBottom: 10 }}>
           <div className="mobile-searchbar">
             <div className="search modern">
               <FiSearch />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search complaints by ID or crime" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search complaints by ID, crime, or station" />
               {q && (
                 <button className="clear-btn" onClick={() => setQ('')}>Clear</button>
               )}
@@ -266,22 +266,21 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
         <div className="complaints-cards">
           {filtered.map((c) => (
             <div className="card complaint-card horizontal" key={c._id}>
-              {c.photoUrl ? (
-                <img className="thumb" src={c.photoUrl} alt="complaint photo" />
-              ) : (
-                <span className="thumb placeholder" aria-hidden />
-              )}
-              <div className="info">
-                {/* First row: ID and Crime side-by-side */}
-                <div className="info-row">
-                  <span className="id" title={c._id}>#{c._id?.slice(-6)}</span>
-                  <span className="crime" title={c.type}>{c.type}</span>
-                </div>
-                {/* Second row: View Details button and Status badge */}
-                <div className="line-actions">
-                  <DetailsModalButton complaint={c} />
-                  <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
-                </div>
+              {/* Row 1: image + id + crime + station (single line) */}
+              <div className="row-main">
+                {c.photoUrl ? (
+                  <img className="thumb" src={c.photoUrl} alt="complaint photo" />
+                ) : (
+                  <span className="thumb placeholder" aria-hidden />
+                )}
+                <span className="id" title={c._id}>#{c._id?.slice(-6)}</span>
+                <span className="crime" title={c.type}>{c.type}</span>
+                <span className="station" title={c.station || 'Unassigned'}>{c.station || 'Unassigned'}</span>
+              </div>
+              {/* Row 2: View Details + Status */}
+              <div className="row-actions">
+                <DetailsModalButton complaint={c} />
+                <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
               </div>
             </div>
           ))}
@@ -326,6 +325,7 @@ function DetailsModalButton({ complaint }: { complaint: Complaint }) {
       {open && (
         <div className="modal">
           <div className="modal-body">
+            <button className="icon-btn close" aria-label="Close" onClick={() => setOpen(false)}><FiX /></button>
             <h3>{complaint.title}</h3>
             <p><b>Type:</b> {complaint.type}</p>
             <div className="modal-desc">
