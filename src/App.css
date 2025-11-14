@@ -819,6 +819,7 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
 }
 
 /* Complaint form file row and preview */
+/*unfuiri*/
 .panel.form .file-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
 .panel.form .file-name { color: var(--muted); font-size: 0.95rem; }
 .panel.form .preview-thumb { width: 64px; height: 64px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover; }

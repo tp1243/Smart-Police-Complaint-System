@@ -204,7 +204,7 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
           <div className="table-toolbar desktop-only">
             <FiSearch />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title, ID, or description" />
-          </div>
+          </div>//
           <div className="filters desktop-only">
             <span className={`pill ${statusFilter === '' ? 'active' : ''}`} onClick={() => setStatusFilter('')}>All</span>
             <span className={`pill ${statusFilter === 'Pending' ? 'active' : ''}`} onClick={() => setStatusFilter('Pending')}>Pending</span>
