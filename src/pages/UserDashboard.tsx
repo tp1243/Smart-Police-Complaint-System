@@ -200,11 +200,12 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
     <>
       <div>
         <div className="panel" style={{ marginBottom: 10 }}>
-          <div className="table-toolbar">
+          {/* Desktop toolbar */}
+          <div className="table-toolbar desktop-only">
             <FiSearch />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title, ID, or description" />
           </div>
-          <div className="filters">
+          <div className="filters desktop-only">
             <span className={`pill ${statusFilter === '' ? 'active' : ''}`} onClick={() => setStatusFilter('')}>All</span>
             <span className={`pill ${statusFilter === 'Pending' ? 'active' : ''}`} onClick={() => setStatusFilter('Pending')}>Pending</span>
             <span className={`pill ${statusFilter === 'Under Review' ? 'active' : ''}`} onClick={() => setStatusFilter('Under Review')}>Under Review</span>
@@ -216,6 +217,16 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
               </select>
+            </div>
+          </div>
+          {/* Mobile-only professional search bar */}
+          <div className="mobile-searchbar">
+            <div className="search modern">
+              <FiSearch />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search complaints by ID or crime" />
+              {q && (
+                <button className="clear-btn" onClick={() => setQ('')}>Clear</button>
+              )}
             </div>
           </div>
         </div>
@@ -253,29 +264,22 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
         <div className="complaints-cards">
           {filtered.map((c) => {
             const distance = typeof c.nearestDistanceKm === 'number' ? `${c.nearestDistanceKm.toFixed(1)} km` : ''
-            const filed = new Date(c.createdAt || '').toLocaleDateString()
-            const station = c.station ? `${c.station}${distance ? ` (${distance})` : ''}` : '-'
             return (
-              <div className="card complaint-card" key={c._id}>
-                <div className="head">
-                  <div className="meta">
-                    <span title={c._id}>#{c._id?.slice(-6)}</span>
-                    <span>{filed}</span>
-                    <span title={station}>{station}</span>
+              <div className="card complaint-card horizontal" key={c._id}>
+                {c.photoUrl ? (
+                  <img className="thumb" src={c.photoUrl} alt="complaint photo" />
+                ) : (
+                  <span className="thumb placeholder" aria-hidden />
+                )}
+                <div className="info">
+                  <div className="top-row">
+                    <span className="id" title={c._id}>#{c._id?.slice(-6)}</span>
+                    <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
                   </div>
-                  <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
-                </div>
-                <div className="title-row" title={c.title}>
-                  {c.photoUrl ? (
-                    <img className="thumb" src={c.photoUrl} alt="complaint photo" />
-                  ) : (
-                    <span className="thumb placeholder" aria-hidden />
-                  )}
-                  <span className="title-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</span>
-                </div>
-                <div className="actions">
-                  <DetailsModalButton complaint={c} />
-                  <DownloadPdfButton complaint={c} />
+                  <div className="crime" title={c.type}>{c.type}</div>
+                  <div className="actions">
+                    <DetailsModalButton complaint={c} />
+                  </div>
                 </div>
               </div>
             )
