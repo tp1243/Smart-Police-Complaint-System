@@ -199,7 +199,7 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
   return (
     <>
       <div>
-        <div className="panel" style={{ marginBottom: 10 }}>
+        <div className="panel desktop-only" style={{ marginBottom: 10 }}>
           {/* Desktop toolbar */}
           <div className="table-toolbar desktop-only">
             <FiSearch />
