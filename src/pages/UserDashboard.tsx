@@ -935,7 +935,7 @@ function MapView({ items }: { items: Complaint[] }) {
     ? `https://maps.google.com/maps?q=${sel.location!.lat},${sel.location!.lng}&z=12&output=embed`
     : `https://maps.google.com/maps?q=${encodeURIComponent(sel.location!.address || '')}&z=12&output=embed`
   return (
-    <div className="panel">
+    <div className="panel notif-panel">
       <div className="muted">Pins shown for first location; switch to Google Maps API later with your key for interactive maps.</div>
       <iframe title="map" src={url} style={{ width: '100%', minHeight: 360, border: 0, borderRadius: 12 }} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 16 }}>
@@ -1040,7 +1040,7 @@ function NotificationsPanel({ token }: { token: string }) {
 
   return (
     <div className="panel">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div className="notif-header desktop-only" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}><FiBell /> Notifications & Updates</h3>
           <span className="badge" title="Unread count">{unreadCount} Unread</span>
@@ -1051,7 +1051,7 @@ function NotificationsPanel({ token }: { token: string }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+      <div className="notif-toolbar" style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
         <div className="search modern" aria-label="Search notifications" style={{ flex: 1 }}>
           <FiSearch />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search updates" />
