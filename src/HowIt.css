@@ -160,4 +160,16 @@
     width: 220px;
     padding: 2rem 1.2rem;
   }
+
+  /* Mobile-only: show only icon and heading, hide theory/description */
+  .how-card p {
+    display: none;
+  }
+  /* Tighten spacing when description is removed */
+  .how-card h3 {
+    margin-bottom: 0.2rem;
+  }
+  .how-icon {
+    margin-bottom: 0.9rem;
+  }
 }
