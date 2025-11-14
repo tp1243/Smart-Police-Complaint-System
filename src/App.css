@@ -798,22 +798,25 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
 .complaint-card .title-row .thumb.placeholder { background: #0b1324; border-color: #24324a; }
 .complaint-card .title-text { font-weight: 600; color: var(--text); }
 .complaint-card .actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+/* Default: keep mobile-only search card hidden on desktop */
+.mobile-search-card { display: none; }
 @media (max-width: 768px) {
   .table { display: none; }
   .complaints-cards { display: grid; gap: 12px; grid-template-columns: 1fr; }
   /* Show only the modern search bar on mobile */
   .desktop-only { display: none !important; }
   .mobile-searchbar { display: block; }
+  .mobile-search-card { display: block; }
   .mobile-searchbar .search.modern { gap: 8px; padding: 12px; }
   /* Horizontal complaint card layout for mobile */
   .complaint-card.horizontal { display: grid; grid-template-columns: 60px 1fr; align-items: center; gap: 12px; }
   .complaint-card.horizontal .thumb { width: 60px; height: 60px; border-radius: 10px; border: 1px solid var(--border); object-fit: cover; }
   .complaint-card.horizontal .thumb.placeholder { background: #0b1324; border-color: #24324a; }
   .complaint-card.horizontal .info { display: flex; flex-direction: column; gap: 8px; }
-  .complaint-card.horizontal .top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .complaint-card.horizontal .info-row { display: flex; align-items: center; gap: 10px; }
   .complaint-card.horizontal .id { color: var(--muted); font-weight: 600; }
   .complaint-card.horizontal .crime { font-weight: 700; color: var(--text); }
-  .complaint-card.horizontal .actions { justify-content: flex-start; margin-top: 4px; }
+  .complaint-card.horizontal .line-actions { display: inline-flex; align-items: center; gap: 8px; }
   /* Hide desktop filters/sort on mobile */
   .filters, .sort { display: none !important; }
 }

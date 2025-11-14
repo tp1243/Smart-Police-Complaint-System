@@ -204,7 +204,7 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
           <div className="table-toolbar desktop-only">
             <FiSearch />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title, ID, or description" />
-          </div>//
+          </div>
           <div className="filters desktop-only">
             <span className={`pill ${statusFilter === '' ? 'active' : ''}`} onClick={() => setStatusFilter('')}>All</span>
             <span className={`pill ${statusFilter === 'Pending' ? 'active' : ''}`} onClick={() => setStatusFilter('Pending')}>Pending</span>
@@ -219,7 +219,9 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
               </select>
             </div>
           </div>
-          {/* Mobile-only professional search bar */}
+        </div>
+        {/* Mobile-only professional search bar in its own card */}
+        <div className="panel mobile-only mobile-search-card" style={{ marginBottom: 10 }}>
           <div className="mobile-searchbar">
             <div className="search modern">
               <FiSearch />
@@ -262,28 +264,27 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
         </div>
         {/* Mobile cards view for complaints */}
         <div className="complaints-cards">
-          {filtered.map((c) => {
-            const distance = typeof c.nearestDistanceKm === 'number' ? `${c.nearestDistanceKm.toFixed(1)} km` : ''
-            return (
-              <div className="card complaint-card horizontal" key={c._id}>
-                {c.photoUrl ? (
-                  <img className="thumb" src={c.photoUrl} alt="complaint photo" />
-                ) : (
-                  <span className="thumb placeholder" aria-hidden />
-                )}
-                <div className="info">
-                  <div className="top-row">
-                    <span className="id" title={c._id}>#{c._id?.slice(-6)}</span>
-                    <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
-                  </div>
-                  <div className="crime" title={c.type}>{c.type}</div>
-                  <div className="actions">
-                    <DetailsModalButton complaint={c} />
-                  </div>
+          {filtered.map((c) => (
+            <div className="card complaint-card horizontal" key={c._id}>
+              {c.photoUrl ? (
+                <img className="thumb" src={c.photoUrl} alt="complaint photo" />
+              ) : (
+                <span className="thumb placeholder" aria-hidden />
+              )}
+              <div className="info">
+                {/* First row: ID and Crime side-by-side */}
+                <div className="info-row">
+                  <span className="id" title={c._id}>#{c._id?.slice(-6)}</span>
+                  <span className="crime" title={c.type}>{c.type}</span>
+                </div>
+                {/* Second row: View Details button and Status badge */}
+                <div className="line-actions">
+                  <DetailsModalButton complaint={c} />
+                  <StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} />
                 </div>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </>
