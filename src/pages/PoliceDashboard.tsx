@@ -39,7 +39,7 @@ export default function PoliceDashboard() {
   const content = useMemo(() => {
     switch (section) {
       case 'overview':
-        return <PoliceOverview token={token} />
+        return <PoliceOverview token={token} station={officer?.station} />
       case 'active':
       case 'pending':
       case 'completed':

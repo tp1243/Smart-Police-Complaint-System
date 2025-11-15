@@ -1,32 +1,51 @@
 import { useEffect, useState } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
 import { Chart, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend } from 'chart.js'
-import { request } from '../../services/api'
+import { policeApi } from '../../services/police'
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend)
 
-type Props = { token: string }
+type Props = { token: string; station?: string }
 
-export default function PoliceOverview({ token }: Props) {
+export default function PoliceOverview({ token, station }: Props) {
   const [stats, setStats] = useState<{ totalComplaints: number; casesSolved: number; complaintsPending: number; activeOfficers: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [barData, setBarData] = useState<any>({ labels: ['Pending','In Progress','Solved'], datasets: [{ label: 'Complaints', backgroundColor: '#38bdf8', data: [0,0,0] }] })
+  const [lineData, setLineData] = useState<any>({ labels: [], datasets: [{ label: 'Trend', borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.2)', data: [] }] })
 
   useEffect(() => {
     let active = true
-    request<{ stats: any }>('/stats', { method: 'GET' })
-      .then((res) => { if (active) setStats(res.stats) })
+    function compute(complaints: any[]) {
+      const scoped = station ? complaints.filter((c) => (c.station || '').trim() === station) : complaints
+      const total = scoped.length
+      const solved = scoped.filter((c) => (c.status || '') === 'Solved').length
+      const pending = scoped.filter((c) => (c.status || '') === 'Pending').length
+      const inProgress = scoped.filter((c) => ['In Progress','Under Review'].includes(c.status || '')).length
+      setStats({ totalComplaints: total, casesSolved: solved, complaintsPending: pending, activeOfficers: 0 })
+      setBarData({ labels: ['Pending','In Progress','Solved'], datasets: [{ label: 'Complaints', backgroundColor: '#38bdf8', data: [pending, inProgress, solved] }] })
+      const days = [...Array(7)].map((_, i) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d
+      })
+      const labels = days.map((d) => d.toLocaleDateString(undefined, { weekday: 'short' }))
+      const counts = days.map((d) => {
+        const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+        return scoped.filter((c) => {
+          const cd = new Date(c.createdAt || c.updatedAt || Date.now())
+          const ck = new Date(cd.getFullYear(), cd.getMonth(), cd.getDate()).getTime()
+          return ck === key
+        }).length
+      })
+      setLineData({ labels, datasets: [{ label: 'Trend', borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.2)', data: counts }] })
+    }
+    policeApi.listComplaints(token)
+      .then((res) => { if (!active) return; compute(res.complaints || []) })
       .catch((err) => setError(err.message || 'Failed to load stats'))
-    return () => { active = false }
-  }, [token])
+    const id = setInterval(() => {
+      policeApi.listComplaints(token).then((res) => compute(res.complaints || [])).catch(() => {})
+    }, 12000)
+    return () => { active = false; clearInterval(id) }
+  }, [token, station])
 
-  const barData = {
-    labels: ['Pending', 'In Progress', 'Solved'],
-    datasets: [{ label: 'Complaints', backgroundColor: '#38bdf8', data: [stats?.complaintsPending || 0, Math.max((stats?.totalComplaints || 0) - (stats?.complaintsPending || 0) - (stats?.casesSolved || 0), 0), stats?.casesSolved || 0] }],
-  }
-  const lineData = {
-    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-    datasets: [{ label: 'Trend', borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.2)', data: [12, 14, 9, 16, 20, 18, 22] }],
-  }
 
   return (
     <div className="panel">
