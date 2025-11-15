@@ -48,6 +48,17 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
   }, [token])
 
   useEffect(() => {
+    function handler(e: Event) {
+      const ce = e as CustomEvent<{ message: string; type?: 'success' | 'error' | 'info' }>
+      const msg = ce.detail?.message || ''
+      const type = ce.detail?.type || 'success'
+      if (msg) setToast({ message: msg, type })
+    }
+    window.addEventListener('spcs:user-toast', handler as EventListener)
+    return () => window.removeEventListener('spcs:user-toast', handler as EventListener)
+  }, [])
+
+  useEffect(() => {
     if (theme === 'light') document.body.classList.add('light-theme'); else document.body.classList.remove('light-theme')
     localStorage.setItem('theme', theme)
   }, [theme])

@@ -106,6 +106,12 @@ export default function UserDashboard() {
     setStats(s.stats)
     setRefreshSignal(v => v + 1)
     setSection('my')
+    try {
+      const st = res.complaint?.station || 'nearest station'
+      const km = typeof res.complaint?.nearestDistanceKm === 'number' ? `${res.complaint.nearestDistanceKm.toFixed(1)} km` : ''
+      const message = km ? `Your complaint submitted to ${st} (${km})` : `Your complaint submitted to ${st}`
+      window.dispatchEvent(new CustomEvent('spcs:user-toast', { detail: { message, type: 'success' } }))
+    } catch {}
   }
 
   const content = useMemo(() => {
