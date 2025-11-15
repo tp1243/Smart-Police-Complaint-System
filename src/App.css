@@ -851,5 +851,19 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
   .user-auth .form-row input, .user-auth .form-row textarea { background: rgba(16,18,22,0.6); border: 1px solid rgba(255,255,255,0.14); }
   .user-auth .pwd-toggle { background: rgba(16,18,22,0.6); border: 1px solid rgba(255,255,255,0.14); }
   .user-auth .form-actions { justify-content: center; gap: 10px; }
+  /* Add padding top to avoid overlap with auth navbar */
+  .user-auth { padding-top: 64px; }
+
+  /* Auth mobile navbar */
+  .auth-navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; display: block; backdrop-filter: blur(8px); background: rgba(12,16,24,0.35); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .auth-navbar.scrolled { background: rgba(12,16,24,0.55); border-bottom-color: rgba(255,255,255,0.12); }
+  .auth-nav-inner { max-width: 1100px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .auth-nav-actions { display: inline-flex; align-items: center; gap: 10px; }
+  .auth-navbar .logo { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; }
+}
+
+/* Hide auth navbar on desktop to preserve original design */
+@media (min-width: 901px) {
+  .auth-navbar { display: none; }
 }
 

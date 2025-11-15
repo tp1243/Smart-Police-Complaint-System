@@ -5,6 +5,7 @@ import { api } from '../services/api'
 import AuthShowcase from '../components/AuthShowcase'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 import SocialAuth from '../components/SocialAuth'
+import AuthHeader from '../components/AuthHeader'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -47,7 +48,9 @@ export default function Register() {
   }
 
   return (
-    <div className="auth-layout user-auth">
+    <>
+      <AuthHeader variant="register" />
+      <div className="auth-layout user-auth">
       <div className="auth-left">
         <AuthShowcase title="Create your account" subtitle="Join SPCS to submit and track complaints." />
       </div>
@@ -79,6 +82,7 @@ export default function Register() {
           <SocialAuth />
         </motion.form>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
