@@ -411,6 +411,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   const [submitError, setSubmitError] = useState('')
   const [recognizing, setRecognizing] = useState(false)
   const recognitionRef = useRef<any>(null)
+  const lastFinalRef = useRef<string>('')
   const voiceSupported = useMemo(() => {
     try { return !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) } catch { return false }
   }, [])
@@ -516,15 +517,15 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
         recognitionRef.current = r
         r.lang = (navigator.language || 'en-IN')
         r.continuous = true
-        r.interimResults = true
+        r.interimResults = false
         r.onresult = (e: any) => {
-          let finalText = ''
-          for (let i = e.resultIndex; i < e.results.length; i++) {
-            const transcript = e.results[i][0].transcript
-            if (e.results[i].isFinal) finalText += transcript
-          }
-          if (finalText) {
-            setForm(prev => ({ ...prev, description: `${(prev.description || '').trim()} ${finalText}`.trim() }))
+          const idx = e.results.length - 1
+          const res = e.results[idx]
+          if (!res) return
+          const transcript = String(res[0]?.transcript || '').trim().replace(/\s+/g, ' ')
+          if (res.isFinal && transcript && transcript !== lastFinalRef.current) {
+            lastFinalRef.current = transcript
+            setForm(prev => ({ ...prev, description: prev.description ? `${prev.description} ${transcript}` : transcript }))
           }
         }
         r.onend = () => { setRecognizing(false) }
