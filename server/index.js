@@ -18,12 +18,9 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(passport.initialize())
 
-const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'https://smart-police-complaint-system.vercel.app' } = process.env
-// Twilio config: use env if available, else fall back to provided credentials
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || 'ACc0433fc3c38d7b4f1c1bda9e07446ec9'
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || 'da41cba9c755ffc95dc8ad9fcc7abe35'
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+19206858103'
-const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'https://smart-police-complaint-system.vercel.app', TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, NODE_ENV } = process.env
+const TWILIO_ENABLED = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE_NUMBER)
+const twilioClient = TWILIO_ENABLED ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) : null
 // Simple in-memory OTP store (sessionId -> { phone, email, code, expiresAt })
 const OTP_STORE = new Map()
 setInterval(() => {
@@ -320,6 +317,13 @@ app.post('/api/auth/2fa/send-otp', async (req, res) => {
     const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36)
     const expiresAt = Date.now() + 5 * 60 * 1000
     OTP_STORE.set(sessionId, { phone, email, code, purpose, expiresAt })
+    if (!TWILIO_ENABLED) {
+      if (NODE_ENV === 'development') {
+        console.warn(`[DEV] Twilio not configured. OTP for ${phone}: ${code}`)
+        return res.json({ sessionId, expiresIn: 300, simulated: true })
+      }
+      return res.status(503).json({ error: 'OTP service unavailable' })
+    }
     try {
       await twilioClient.messages.create({ to: phone, from: TWILIO_PHONE_NUMBER, body: `Your SPCS verification code is ${code}. It expires in 5 minutes.` })
     } catch (twErr) {
