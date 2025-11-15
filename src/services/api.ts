@@ -29,12 +29,7 @@ export const api = {
   async login(email: string, password: string): Promise<AuthResponse> {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
   },
-  async sendOtp(email: string, purpose: 'login' | 'register' = 'login', phone?: string) {
-    return request<{ sessionId: string; expiresIn: number }>('/auth/2fa/send-otp', { method: 'POST', body: JSON.stringify({ email, purpose, phone }) })
-  },
-  async verifyOtp(sessionId: string, code: string) {
-    return request<{ success: boolean }>('/auth/2fa/verify-otp', { method: 'POST', body: JSON.stringify({ sessionId, code }) })
-  },
+  // Removed OTP flows
   async profile(token: string) {
     return request<{ user: ProfileUser }>('/profile', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
   },

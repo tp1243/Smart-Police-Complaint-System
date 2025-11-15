@@ -10,7 +10,6 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 import { Strategy as GitHubStrategy } from 'passport-github2'
 // Apple strategy is optional and more complex; we stub configuration when envs are present
 import AppleStrategy from 'passport-apple'
-import twilio from 'twilio'
 ////////////
 const app = express()
 app.use(cors({ origin: true }))
@@ -18,17 +17,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(passport.initialize())
 
-const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'https://smart-police-complaint-system.vercel.app', TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, NODE_ENV } = process.env
-const TWILIO_ENABLED = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE_NUMBER)
-const twilioClient = TWILIO_ENABLED ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) : null
-// Simple in-memory OTP store (sessionId -> { phone, email, code, expiresAt })
-const OTP_STORE = new Map()
-setInterval(() => {
-  const now = Date.now()
-  for (const [sid, entry] of OTP_STORE.entries()) {
-    if (entry.expiresAt <= now) OTP_STORE.delete(sid)
-  }
-}, 60_000)
+const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'https://smart-police-complaint-system.vercel.app' } = process.env
 if (!MONGO_URL) {
   console.error('Missing MONGO_URL in .env')
   process.exit(1)
@@ -298,70 +287,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 })
 
-// 2FA: Send OTP via Twilio (mobile only UI will call this after login/register)
-app.post('/api/auth/2fa/send-otp', async (req, res) => {
-  try {
-    const { phone: phoneArg, email, purpose = 'login' } = req.body || {}
-    if (!email) {
-      return res.status(400).json({ error: 'Email required' })
-    }
-    const user = await User.findOne({ email })
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-    const phone = phoneArg && typeof phoneArg === 'string' ? phoneArg : user.phone
-    if (!phone || !String(phone).startsWith('+')) {
-      return res.status(400).json({ error: 'No registered phone found; please add a valid +E.164 phone' })
-    }
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36)
-    const expiresAt = Date.now() + 5 * 60 * 1000
-    OTP_STORE.set(sessionId, { phone, email, code, purpose, expiresAt })
-    if (!TWILIO_ENABLED) {
-      if (NODE_ENV === 'development') {
-        console.warn(`[DEV] Twilio not configured. OTP for ${phone}: ${code}`)
-        return res.json({ sessionId, expiresIn: 300, simulated: true })
-      }
-      return res.status(503).json({ error: 'OTP service unavailable' })
-    }
-    try {
-      await twilioClient.messages.create({ to: phone, from: TWILIO_PHONE_NUMBER, body: `Your SPCS verification code is ${code}. It expires in 5 minutes.` })
-    } catch (twErr) {
-      console.error('Twilio send error:', twErr)
-      return res.status(500).json({ error: 'Failed to send OTP' })
-    }
-    return res.json({ sessionId, expiresIn: 300 })
-  } catch (err) {
-    console.error('Send OTP error:', err)
-    return res.status(500).json({ error: 'Server error' })
-  }
-})
-
-// 2FA: Verify OTP code
-app.post('/api/auth/2fa/verify-otp', async (req, res) => {
-  try {
-    const { sessionId, code } = req.body || {}
-    if (!sessionId || !code) {
-      return res.status(400).json({ error: 'sessionId and code required' })
-    }
-    const entry = OTP_STORE.get(sessionId)
-    if (!entry) {
-      return res.status(400).json({ error: 'Invalid or expired session' })
-    }
-    if (entry.expiresAt <= Date.now()) {
-      OTP_STORE.delete(sessionId)
-      return res.status(400).json({ error: 'OTP expired' })
-    }
-    if (String(entry.code) !== String(code)) {
-      return res.status(400).json({ error: 'Invalid OTP code' })
-    }
-    OTP_STORE.delete(sessionId)
-    return res.json({ success: true })
-  } catch (err) {
-    console.error('Verify OTP error:', err)
-    return res.status(500).json({ error: 'Server error' })
-  }
-})
+// Removed 2FA OTP endpoints
 
 // Police auth routes
 app.post('/api/police/register', async (req, res) => {

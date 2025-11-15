@@ -33,19 +33,18 @@ export default function Register() {
     }
   }, [location.search])
 
-  // No mobile check here; we always route to VerifyOtp and that page
-  // decides whether to immediately redirect on desktop.
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     if (!username || !email || !password) { setError('Please fill in all fields'); return }
-    if (!phone) { setError('Please enter your mobile number'); return }
     setLoading(true)
     try {
-      const normalizedPhone = phone.startsWith('+') ? phone : `+91${phone.replace(/\D/g, '').slice(-10)}`
+      const normalizedPhone = phone ? (phone.startsWith('+') ? phone : `+91${phone.replace(/\D/g, '').slice(-10)}`) : undefined
       const res = await api.register(username, email, password, normalizedPhone)
-      navigate('/verify-otp', { state: { email, phone: normalizedPhone, purpose: 'register', token: res.token, user: res.user } })
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('user', JSON.stringify(res.user))
+      navigate('/user')
     } catch (err: any) {
       setError(err.message || 'Registration failed')
     } finally {

@@ -30,8 +30,6 @@ export default function Login() {
     }
   }, [location.search])
 
-  // No mobile check here; we always route to VerifyOtp and that page
-  // decides whether to immediately redirect on desktop.
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,7 +38,9 @@ export default function Login() {
     setLoading(true)
     try {
       const res = await api.login(email, password)
-      navigate('/verify-otp', { state: { email, purpose: 'login', token: res.token, user: res.user } })
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('user', JSON.stringify(res.user))
+      navigate('/user')
     } catch (err: any) {
       setError(err.message || 'Login failed')
     } finally {
