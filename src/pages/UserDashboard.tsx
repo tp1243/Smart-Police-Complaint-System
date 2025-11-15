@@ -8,7 +8,7 @@ import { complaintsApi } from '../services/complaints'
 import { api, supportApi,  type ProfileUser } from '../services/api'
 import { notificationsApi } from '../services/notifications'
 import { connectRealtime } from '../services/realtime'
-import { FiHelpCircle, FiMessageCircle, FiFileText, FiStar, FiPhone, FiBookOpen, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiPaperclip, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo, FiMenu } from 'react-icons/fi'
+import { FiHelpCircle, FiMessageCircle, FiFileText, FiStar, FiPhone, FiBookOpen, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiPaperclip, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo, FiMenu, FiMic } from 'react-icons/fi'
 import { AnimatePresence, motion } from 'framer-motion'
 import jsPDF from 'jspdf'
 import type { Complaint, ComplaintStatus, NotificationItem } from '../types'
@@ -409,6 +409,11 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   const [ok, setOk] = useState('')
   const [errors, setErrors] = useState<{ title?: string; type?: string; description?: string; contact?: string }>({})
   const [submitError, setSubmitError] = useState('')
+  const [recognizing, setRecognizing] = useState(false)
+  const recognitionRef = useRef<any>(null)
+  const voiceSupported = useMemo(() => {
+    try { return !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) } catch { return false }
+  }, [])
   useEffect(() => { localStorage.setItem('complaintDraft', JSON.stringify(form)) }, [form])
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -500,6 +505,41 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     if (videoRef.current) { try { videoRef.current.pause() } catch {}; videoRef.current.srcObject = null }
     setCameraActive(false)
   }
+
+  function toggleVoice() {
+    setSubmitError('')
+    if (!recognizing) {
+      if (!voiceSupported) { setSubmitError('Voice input not supported on this device/browser'); return }
+      try {
+        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        const r = new SR()
+        recognitionRef.current = r
+        r.lang = (navigator.language || 'en-IN')
+        r.continuous = true
+        r.interimResults = true
+        r.onresult = (e: any) => {
+          let finalText = ''
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const transcript = e.results[i][0].transcript
+            if (e.results[i].isFinal) finalText += transcript
+          }
+          if (finalText) {
+            setForm(prev => ({ ...prev, description: `${(prev.description || '').trim()} ${finalText}`.trim() }))
+          }
+        }
+        r.onend = () => { setRecognizing(false) }
+        r.onerror = () => { setRecognizing(false) }
+        r.start()
+        setRecognizing(true)
+      } catch (err: any) {
+        setSubmitError(err?.message || 'Failed to start voice input')
+      }
+    } else {
+      try { recognitionRef.current?.stop() } catch {}
+      setRecognizing(false)
+    }
+  }
+
 
   function estimateDataUrlSize(dataUrl: string) {
     const b64 = dataUrl.split(',')[1] || ''
@@ -824,7 +864,12 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       </div>
       <label>
         Description
-        <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4} />
+        <div className="textarea-wrap">
+          <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4} />
+          <button type="button" className={`mic-overlay ${recognizing ? 'active' : ''}`} onClick={toggleVoice} aria-label={recognizing ? 'Stop recording' : 'Start recording'}>
+            <FiMic />
+          </button>
+        </div>
         {errors.description && <small className="muted" style={{ color: '#fecaca' }}>{errors.description}</small>}
       </label>
       <div className="grid two">
