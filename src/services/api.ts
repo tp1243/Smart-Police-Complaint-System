@@ -3,15 +3,47 @@ export type AuthPoliceResponse = { token: string; officer: { id: string; usernam
 export type ProfileUser = { id: string; username: string; email: string; phone?: string; address?: string; avatarUrl?: string }
 
 const apiBaseRaw = (import.meta.env.VITE_API_URL as string) || (import.meta.env.VITE_API_BASE_URL as string) || ''
-export const API_URL = apiBaseRaw
-  ? (apiBaseRaw.endsWith('/api') ? apiBaseRaw : `${apiBaseRaw.replace(/\/$/, '')}/api`)
-  : 'https://smart-police-complaint-system.onrender.com/api'
+let cachedApiBase: string | null = null
+
+function normalizeBase(u: string) {
+  const base = u.trim()
+  if (!base) return ''
+  const withoutSlash = base.replace(/\/$/, '')
+  return withoutSlash.endsWith('/api') ? withoutSlash : `${withoutSlash}/api`
+}
+
+async function ping(url: string) {
+  try {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 4000)
+    const r = await fetch(`${url}/health`, { method: 'GET', signal: ctrl.signal })
+    clearTimeout(t)
+    return r.ok
+  } catch {
+    return false
+  }
+}
+
+async function resolveApiBase(): Promise<string> {
+  if (cachedApiBase) return cachedApiBase
+  const override = typeof window !== 'undefined' ? localStorage.getItem('apiBaseOverride') || '' : ''
+  const envBase = apiBaseRaw || ''
+  const defaultRender = 'https://smart-police-complaint-system.onrender.com'
+  const sameOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+  const candidates = [override, envBase, defaultRender, sameOrigin].map(normalizeBase).filter(Boolean)
+  for (const c of candidates) {
+    const ok = await ping(c)
+    if (ok) { cachedApiBase = c; if (typeof window !== 'undefined') localStorage.setItem('apiResolved', c); return c }
+  }
+  cachedApiBase = candidates[0] || 'https://smart-police-complaint-system.onrender.com/api'
+  return cachedApiBase
+}
 
 export async function request<T>(path: string, options: RequestInit): Promise<T> {
-  // Ensure default headers are preserved when caller supplies headers
+  const base = await resolveApiBase()
   const mergedHeaders = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   const finalOptions: RequestInit = { ...options, headers: mergedHeaders }
-  const res = await fetch(`${API_URL}${path}`, finalOptions)
+  const res = await fetch(`${base}${path}`, finalOptions)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || `Request failed: ${res.status}`)

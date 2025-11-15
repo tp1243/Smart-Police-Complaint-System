@@ -1,11 +1,10 @@
 import { io, Socket } from 'socket.io-client'
-import { API_URL } from './api'
 
 function getSocketBaseUrl() {
-  // Derive Socket.IO base from API_URL; e.g., https://smart-police-complaint-system.onrender.com/api -> https://smart-police-complaint-system.onrender.com
   try {
-    if (!API_URL) return 'https://smart-police-complaint-system.onrender.com'
-    return API_URL.replace(/\/api$/, '')
+    const raw = (import.meta.env.VITE_API_URL as string) || (import.meta.env.VITE_API_BASE_URL as string) || (typeof window !== 'undefined' ? localStorage.getItem('apiResolved') || '' : '')
+    const base = raw.trim() ? raw.trim() : 'https://smart-police-complaint-system.onrender.com/api'
+    return base.replace(/\/api$/, '')
   } catch {
     return 'https://smart-police-complaint-system.onrender.com'
   }
