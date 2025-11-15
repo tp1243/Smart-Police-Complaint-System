@@ -31,7 +31,7 @@ services:
     staticPublishPath: dist
     envVars:
       # Point Vite to the API URL (works for previews too)
-      - key: VITE_API_BASE_URL
+      - key: VITE_API_URL
         fromService:
           name: spcs-api
           type: web
