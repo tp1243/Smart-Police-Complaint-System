@@ -15,6 +15,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
+  
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -29,6 +30,9 @@ export default function Login() {
     }
   }, [location.search])
 
+  // No mobile check here; we always route to VerifyOtp and that page
+  // decides whether to immediately redirect on desktop.
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -36,15 +40,15 @@ export default function Login() {
     setLoading(true)
     try {
       const res = await api.login(email, password)
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(res.user))
-      navigate('/user')
+      navigate('/verify-otp', { state: { email, purpose: 'login', token: res.token, user: res.user } })
     } catch (err: any) {
       setError(err.message || 'Login failed')
     } finally {
       setLoading(false)
     }
   }
+
+  // OTP handling moved to dedicated VerifyOtp page
 
   return (
     <>
@@ -81,6 +85,8 @@ export default function Login() {
           </div>
           <SocialAuth />
         </motion.form>
+
+        
       </div>
       </div>
     </>

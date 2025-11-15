@@ -17,8 +17,8 @@ export async function request<T>(path: string, options: RequestInit): Promise<T>
 }
 
 export const api = {
-  async register(username: string, email: string, password: string): Promise<AuthResponse> {
-    return request<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password }) })
+  async register(username: string, email: string, password: string, phone?: string): Promise<AuthResponse> {
+    return request<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password, phone }) })
   },
   async policeRegister(username: string, email: string, password: string, station: string): Promise<AuthPoliceResponse> {
     return request<AuthPoliceResponse>('/police/register', { method: 'POST', body: JSON.stringify({ username, email, password, station }) })
@@ -28,6 +28,12 @@ export const api = {
   },
   async login(email: string, password: string): Promise<AuthResponse> {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+  },
+  async sendOtp(email: string, purpose: 'login' | 'register' = 'login', phone?: string) {
+    return request<{ sessionId: string; expiresIn: number }>('/auth/2fa/send-otp', { method: 'POST', body: JSON.stringify({ email, purpose, phone }) })
+  },
+  async verifyOtp(sessionId: string, code: string) {
+    return request<{ success: boolean }>('/auth/2fa/verify-otp', { method: 'POST', body: JSON.stringify({ sessionId, code }) })
   },
   async profile(token: string) {
     return request<{ user: ProfileUser }>('/profile', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })

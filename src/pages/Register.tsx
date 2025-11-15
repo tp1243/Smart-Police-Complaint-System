@@ -16,6 +16,9 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
+  
+  const [phone, setPhone] = useState('')
+  
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -30,22 +33,27 @@ export default function Register() {
     }
   }, [location.search])
 
+  // No mobile check here; we always route to VerifyOtp and that page
+  // decides whether to immediately redirect on desktop.
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     if (!username || !email || !password) { setError('Please fill in all fields'); return }
+    if (!phone) { setError('Please enter your mobile number'); return }
     setLoading(true)
     try {
-      const res = await api.register(username, email, password)
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(res.user))
-      navigate('/user')
+      const normalizedPhone = phone.startsWith('+') ? phone : `+91${phone.replace(/\D/g, '').slice(-10)}`
+      const res = await api.register(username, email, password, normalizedPhone)
+      navigate('/verify-otp', { state: { email, phone: normalizedPhone, purpose: 'register', token: res.token, user: res.user } })
     } catch (err: any) {
       setError(err.message || 'Registration failed')
     } finally {
       setLoading(false)
     }
   }
+
+  // OTP handling moved to dedicated VerifyOtp page
 
   return (
     <>
@@ -65,6 +73,10 @@ export default function Register() {
             <input id="register-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder=" " />
             <label htmlFor="register-email">Email</label>
           </div>
+          <div className="form-row phone-row">
+            <div className="country-prefix">IND +91</div>
+            <input id="register-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Mobile number" />
+          </div>
           <div className="form-row">
             <div className="password-row">
               <input id="register-password" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder=" " />
@@ -81,6 +93,8 @@ export default function Register() {
           </div>
           <SocialAuth />
         </motion.form>
+
+        
       </div>
       </div>
     </>

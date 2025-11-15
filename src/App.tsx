@@ -18,6 +18,7 @@ import PoliceLogin from './pages/PoliceLogin'
 import PoliceRegister from './pages/PoliceRegister'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import VerifyOtp from './pages/VerifyOtp'
 import { Routes, Route } from 'react-router-dom'
 
 function LandingPage() {
@@ -50,6 +51,7 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/verify-otp" element={<VerifyOtp />} />
       <Route path="/user" element={<UserDashboard />} />
       <Route path="/police/login" element={<PoliceLogin />} />
       <Route path="/police/register" element={<PoliceRegister />} />

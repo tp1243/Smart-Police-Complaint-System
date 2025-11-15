@@ -10,6 +10,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 import { Strategy as GitHubStrategy } from 'passport-github2'
 // Apple strategy is optional and more complex; we stub configuration when envs are present
 import AppleStrategy from 'passport-apple'
+import twilio from 'twilio'
 ////////////
 const app = express()
 app.use(cors({ origin: true }))
@@ -18,6 +19,19 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(passport.initialize())
 
 const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'https://smart-police-complaint-system.vercel.app' } = process.env
+// Twilio config: use env if available, else fall back to provided credentials
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || 'ACc0433fc3c38d7b4f1c1bda9e07446ec9'
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || 'da41cba9c755ffc95dc8ad9fcc7abe35'
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+19206858103'
+const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+// Simple in-memory OTP store (sessionId -> { phone, email, code, expiresAt })
+const OTP_STORE = new Map()
+setInterval(() => {
+  const now = Date.now()
+  for (const [sid, entry] of OTP_STORE.entries()) {
+    if (entry.expiresAt <= now) OTP_STORE.delete(sid)
+  }
+}, 60_000)
 if (!MONGO_URL) {
   console.error('Missing MONGO_URL in .env')
   process.exit(1)
@@ -237,7 +251,7 @@ app.get('/api/oauth/fail', (req, res) => res.status(401).send('OAuth failed'))
 // Auth routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body
+    const { username, email, password, phone } = req.body
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' })
     }
@@ -246,7 +260,17 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' })
     }
     const hashed = await bcrypt.hash(password, 10)
-    const user = await User.create({ username, email, password: hashed })
+    // Normalize phone to E.164 if IND +91 provided; do basic validation
+    let normalizedPhone = undefined
+    if (phone && typeof phone === 'string') {
+      const trimmed = phone.trim()
+      // If the phone starts with 0, remove leading zeros
+      const digits = trimmed.replace(/\D/g, '')
+      if (digits.startsWith('91')) normalizedPhone = `+${digits}`
+      else if (trimmed.startsWith('+')) normalizedPhone = trimmed
+      else if (digits.length >= 10) normalizedPhone = `+91${digits.slice(-10)}`
+    }
+    const user = await User.create({ username, email, password: hashed, phone: normalizedPhone })
     const token = createToken(user)
     return res.json({ token, user: { id: user._id, username: user.username, email: user.email } })
   } catch (err) {
@@ -273,6 +297,64 @@ app.post('/api/auth/login', async (req, res) => {
     return res.json({ token, user: { id: user._id, username: user.username, email: user.email } })
   } catch (err) {
     console.error('Login error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// 2FA: Send OTP via Twilio (mobile only UI will call this after login/register)
+app.post('/api/auth/2fa/send-otp', async (req, res) => {
+  try {
+    const { phone: phoneArg, email, purpose = 'login' } = req.body || {}
+    if (!email) {
+      return res.status(400).json({ error: 'Email required' })
+    }
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    const phone = phoneArg && typeof phoneArg === 'string' ? phoneArg : user.phone
+    if (!phone || !String(phone).startsWith('+')) {
+      return res.status(400).json({ error: 'No registered phone found; please add a valid +E.164 phone' })
+    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString()
+    const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36)
+    const expiresAt = Date.now() + 5 * 60 * 1000
+    OTP_STORE.set(sessionId, { phone, email, code, purpose, expiresAt })
+    try {
+      await twilioClient.messages.create({ to: phone, from: TWILIO_PHONE_NUMBER, body: `Your SPCS verification code is ${code}. It expires in 5 minutes.` })
+    } catch (twErr) {
+      console.error('Twilio send error:', twErr)
+      return res.status(500).json({ error: 'Failed to send OTP' })
+    }
+    return res.json({ sessionId, expiresIn: 300 })
+  } catch (err) {
+    console.error('Send OTP error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// 2FA: Verify OTP code
+app.post('/api/auth/2fa/verify-otp', async (req, res) => {
+  try {
+    const { sessionId, code } = req.body || {}
+    if (!sessionId || !code) {
+      return res.status(400).json({ error: 'sessionId and code required' })
+    }
+    const entry = OTP_STORE.get(sessionId)
+    if (!entry) {
+      return res.status(400).json({ error: 'Invalid or expired session' })
+    }
+    if (entry.expiresAt <= Date.now()) {
+      OTP_STORE.delete(sessionId)
+      return res.status(400).json({ error: 'OTP expired' })
+    }
+    if (String(entry.code) !== String(code)) {
+      return res.status(400).json({ error: 'Invalid OTP code' })
+    }
+    OTP_STORE.delete(sessionId)
+    return res.json({ success: true })
+  } catch (err) {
+    console.error('Verify OTP error:', err)
     return res.status(500).json({ error: 'Server error' })
   }
 })

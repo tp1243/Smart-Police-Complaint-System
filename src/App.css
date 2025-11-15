@@ -867,3 +867,52 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
   .auth-navbar { display: none; }
 }
 
+/* Mobile-only OTP UI for auth */
+@media (max-width: 768px) {
+  .user-auth .mobile-only { display: block; }
+  .otp-container { margin: 14px 16px 0; }
+  .otp-card { background: rgba(18,20,24,0.6); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 16px; backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0,0,0,0.28); color: var(--text); }
+  .otp-card h4 { margin-top: 4px; margin-bottom: 10px; font-weight: 600; }
+  .otp-input-row { display: flex; align-items: center; justify-content: center; }
+  .otp-input { width: 220px; letter-spacing: 6px; text-align: center; font-size: 20px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18); background: rgba(16,18,22,0.6); color: var(--text); }
+  .form-error.small { font-size: 0.9rem; margin-top: 8px; }
+
+  /* Register phone input with country prefix */
+  .auth-form .phone-row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+  .auth-form .phone-row .country-prefix { background: rgba(16,18,22,0.6); border: 1px solid rgba(255,255,255,0.14); color: var(--muted); padding: 10px 12px; border-radius: 10px; font-weight: 600; }
+  .auth-form .phone-row input { background: rgba(16,18,22,0.6); border: 1px solid rgba(255,255,255,0.14); }
+}
+
+/* Hide mobile-only OTP blocks on desktop */
+@media (min-width: 769px) {
+  .user-auth .mobile-only { display: none; }
+}
+
+/* OTP page baseline styles for all devices */
+.otp-container {
+  max-width: 420px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.otp-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+.otp-card h4 { margin: 0 0 8px; }
+.otp-card .muted { color: var(--muted); margin-bottom: 12px; }
+.otp-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+.otp-actions { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+.otp-actions button { padding: 10px 12px; border: none; border-radius: 8px; cursor: pointer; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.error-text { color: #b00020; margin-top: 8px; }
+
