@@ -47,7 +47,7 @@ export default function Register() {
   }
 
   return (
-    <div className="auth-layout">
+    <div className="auth-layout user-auth">
       <div className="auth-left">
         <AuthShowcase title="Create your account" subtitle="Join SPCS to submit and track complaints." />
       </div>

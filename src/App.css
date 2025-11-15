@@ -841,3 +841,15 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
 .table-toolbar .sort { display: inline-flex; align-items: center; gap: 6px; }
 .table-toolbar .sort-select { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
 
+/* Mobile-only immersive background for user login/register */
+@media (max-width: 900px) {
+  .user-auth { position: relative; min-height: calc(100vh - 72px); padding: 0; }
+  .user-auth::before { content: ''; position: fixed; inset: 0; background: url('./assets/pngtree-abstract-geometric-background-in-black-a-fresh-design-perfect-for-presentations-picture-image_5784387.jpg') center/cover no-repeat; filter: blur(12px) brightness(0.75); z-index: -1; }
+  .user-auth .auth-left { display: none; }
+  .user-auth .auth-right { display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .user-auth .auth-card { background: rgba(20,22,26,0.55); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px); box-shadow: 0 12px 36px rgba(0,0,0,0.35); }
+  .user-auth .form-row input, .user-auth .form-row textarea { background: rgba(16,18,22,0.6); border: 1px solid rgba(255,255,255,0.14); }
+  .user-auth .pwd-toggle { background: rgba(16,18,22,0.6); border: 1px solid rgba(255,255,255,0.14); }
+  .user-auth .form-actions { justify-content: center; gap: 10px; }
+}
+

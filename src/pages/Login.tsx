@@ -46,7 +46,7 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-layout">
+    <div className="auth-layout user-auth">
       <div className="auth-left">
         <AuthShowcase
           title="Welcome back"
