@@ -15,7 +15,8 @@ export type SocketRole = 'user' | 'police'
 export function connectRealtime(role: SocketRole, token: string): Socket {
   const base = getSocketBaseUrl()
   const socket = io(base, {
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
+    timeout: 5000,
     reconnection: true,
     reconnectionAttempts: 5,
     query: { role, token },

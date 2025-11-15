@@ -25,10 +25,24 @@ export default function PoliceNavbar({ token, username, onSearch, onLogout }: Pr
 
   useEffect(() => {
     let active = true;
-    policeApi.listNotifications(token).then((res) => { if (active) setNotifications(res.notifications); }).catch(() => {});
+    const lastSeenRef = { value: '' } as { value: string };
+    policeApi.listNotifications(token).then((res) => {
+      if (!active) return;
+      setNotifications(res.notifications);
+      const newest = res.notifications[0]?.createdAt || '';
+      lastSeenRef.value = newest;
+    }).catch(() => {});
     const id = setInterval(() => {
-      policeApi.listNotifications(token).then((res) => setNotifications(res.notifications)).catch(() => {});
-    }, 10000);
+      policeApi.listNotifications(token).then((res) => {
+        setNotifications(res.notifications);
+        const newest = res.notifications[0]?.createdAt || '';
+        if (newest && newest !== lastSeenRef.value) {
+          lastSeenRef.value = newest;
+          const msg = res.notifications[0]?.message || 'New complaint raised';
+          setToast({ message: msg, type: 'info' });
+        }
+      }).catch(() => {});
+    }, 8000);
     // Real-time socket connection for police station alerts (new complaints)
     const socket = connectRealtime('police', token);
     socket.on('police:new_complaint', (payload: { message: string; complaintId?: string; createdAt?: string }) => {
