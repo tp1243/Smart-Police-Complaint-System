@@ -2,8 +2,14 @@ import { request } from './api'
 import type { Complaint, PoliceNotificationItem, PoliceStation, PoliceOfficerProfile } from '../types'
 
 export const policeApi = {
-  async listComplaints(token: string) {
-    return request<{ complaints: Complaint[] }>(`/police/complaints`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+  async listComplaints(token: string, params?: { status?: string; page?: number; limit?: number; fields?: 'summary' | '' }) {
+    const qs = new URLSearchParams()
+    if (params?.status) qs.set('status', params.status)
+    if (params?.page) qs.set('page', String(params.page))
+    if (params?.limit) qs.set('limit', String(params.limit))
+    if (params?.fields) qs.set('fields', params.fields)
+    const suffix = qs.toString() ? `?${qs.toString()}` : ''
+    return request<{ complaints: Complaint[] }>(`/police/complaints${suffix}`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
   },
   async assignComplaint(token: string, id: string) {
     return request<{ complaint: Complaint }>(`/police/complaints/${id}/assign`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
@@ -58,5 +64,8 @@ export const policeApi = {
   },
   async requestStationUpdate(token: string, payload: { stationName: string; message?: string }) {
     return request<{ ok: boolean }>(`/police/stations/request-update`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) })
+  },
+  async stats(token: string) {
+    return request<{ stats: { totalComplaints: number; pending: number; inProgress: number; solved: number; underReview: number } }>(`/police/stats`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
   },
 }

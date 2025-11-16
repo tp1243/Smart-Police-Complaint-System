@@ -15,6 +15,10 @@ export default function PoliceOverview({ token, station }: Props) {
 
   useEffect(() => {
     let active = true
+    policeApi.stats(token).then((res) => {
+      if (!active) return
+      setStats({ totalComplaints: res.stats.totalComplaints, casesSolved: res.stats.solved, complaintsPending: res.stats.pending, activeOfficers: 0 })
+    }).catch(() => {})
     function compute(complaints: any[]) {
       const scoped = station ? complaints.filter((c) => (c.station || '').trim() === station) : complaints
       const total = scoped.length
@@ -37,11 +41,11 @@ export default function PoliceOverview({ token, station }: Props) {
       })
       setLineData({ labels, datasets: [{ label: 'Trend', borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.2)', data: counts }] })
     }
-    policeApi.listComplaints(token)
+    policeApi.listComplaints(token, { fields: 'summary', limit: 200 })
       .then((res) => { if (!active) return; compute(res.complaints || []) })
       .catch((err) => setError(err.message || 'Failed to load stats'))
     const id = setInterval(() => {
-      policeApi.listComplaints(token).then((res) => compute(res.complaints || [])).catch(() => {})
+      policeApi.listComplaints(token, { fields: 'summary', limit: 200 }).then((res) => compute(res.complaints || [])).catch(() => {})
     }, 12000)
     return () => { active = false; clearInterval(id) }
   }, [token, station])

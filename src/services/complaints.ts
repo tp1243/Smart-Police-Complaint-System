@@ -9,8 +9,13 @@ export const complaintsApi = {
       body: JSON.stringify(payload),
     })
   },
-  async listMine(token: string) {
-    return request<{ complaints: Complaint[] }>('/complaints', {
+  async listMine(token: string, params?: { page?: number; limit?: number; fields?: 'summary' | '' }) {
+    const qs = new URLSearchParams()
+    if (params?.page) qs.set('page', String(params.page))
+    if (params?.limit) qs.set('limit', String(params.limit))
+    if (params?.fields) qs.set('fields', params.fields)
+    const suffix = qs.toString() ? `?${qs.toString()}` : ''
+    return request<{ complaints: Complaint[]; total?: number; totalPages?: number; currentPage?: number }>(`/complaints${suffix}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
     })

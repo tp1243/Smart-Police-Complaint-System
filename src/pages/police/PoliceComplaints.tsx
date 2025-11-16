@@ -44,7 +44,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
   useEffect(() => {
     let active = true
     setLoading(true)
-    policeApi.listComplaints(token).then((res) => {
+    policeApi.listComplaints(token, { fields: 'summary', limit: 100 }).then((res) => {
       if (!active) return
       let rows = res.complaints
       if (filter === 'active') rows = rows.filter((c: any) => c.status === 'In Progress' || c.status === 'Under Review')
@@ -60,7 +60,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const res = await policeApi.listComplaints(token)
+        const res = await policeApi.listComplaints(token, { fields: 'summary', limit: 100 })
         let rows = res.complaints
         if (filter === 'active') rows = rows.filter((c: any) => c.status === 'In Progress' || c.status === 'Under Review')
         if (filter === 'pending') rows = rows.filter((c: any) => c.status === 'Pending')

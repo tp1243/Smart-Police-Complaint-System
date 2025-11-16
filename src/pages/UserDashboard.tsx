@@ -46,12 +46,14 @@ export default function UserDashboard() {
     if (!user || !token) { navigate('/login'); return }
     ;(async () => {
       try {
-        const p = await api.profile(token)
+        const [p, list, s] = await Promise.all([
+          api.profile(token),
+          complaintsApi.listMine(token, { fields: 'summary', limit: 50 }),
+          complaintsApi.stats(token),
+        ])
         setProfile(p.user)
-        const list = await complaintsApi.listMine(token)
         setComplaints(list.complaints)
         statusMapRef.current = Object.fromEntries(list.complaints.map(c => [String(c._id || ''), String(c.status || '')]))
-        const s = await complaintsApi.stats(token)
         setStats(s.stats)
         setLoading(false)
       } catch (err: any) {
@@ -65,7 +67,7 @@ export default function UserDashboard() {
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const list = await complaintsApi.listMine(token)
+        const list = await complaintsApi.listMine(token, { fields: 'summary', limit: 50 })
         const nextMap = Object.fromEntries(list.complaints.map(c => [String(c._id || ''), String(c.status || '')]))
         let changed = false
         for (const [cid, st] of Object.entries(nextMap)) {
@@ -100,10 +102,22 @@ export default function UserDashboard() {
   }
 
   async function submitComplaint(payload: Complaint) {
-    const res = await complaintsApi.create(payload, token)
+    const { photoUrl, ...meta } = payload as any
+    let res: any
+    try {
+      res = await complaintsApi.create(meta as any, token)
+    } catch (err) {
+      await new Promise(r => setTimeout(r, 600))
+      res = await complaintsApi.create(meta as any, token)
+    }
     setComplaints(prev => [res.complaint, ...prev])
-    const s = await complaintsApi.stats(token)
-    setStats(s.stats)
+    const tasks: Array<Promise<any>> = []
+    tasks.push(complaintsApi.stats(token))
+    if (photoUrl) {
+      tasks.push(complaintsApi.update(token, String(res.complaint._id), { photoUrl }))
+    }
+    const [statsRes] = await Promise.all(tasks)
+    if (statsRes?.stats) setStats(statsRes.stats)
     setRefreshSignal(v => v + 1)
     setSection('my')
     try {
@@ -406,6 +420,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   })
   const [fileName, setFileName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [submitStage, setSubmitStage] = useState<'idle' | 'submit' | 'upload' | 'finalize'>('idle')
   const [ok, setOk] = useState('')
   const [errors, setErrors] = useState<{ title?: string; type?: string; description?: string; contact?: string }>({})
   const [submitError, setSubmitError] = useState('')
@@ -415,7 +430,29 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   const voiceSupported = useMemo(() => {
     try { return !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) } catch { return false }
   }, [])
-  useEffect(() => { localStorage.setItem('complaintDraft', JSON.stringify(form)) }, [form])
+  const saveTimer = useRef<number | null>(null)
+  useEffect(() => {
+    try {
+      if (saveTimer.current) { clearTimeout(saveTimer.current) }
+      saveTimer.current = window.setTimeout(() => {
+        try { localStorage.setItem('complaintDraft', JSON.stringify(form)) } catch {}
+      }, 300)
+    } catch {}
+    return () => { if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null } }
+  }, [form])
+
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === 'complaintDraft' && typeof e.newValue === 'string') {
+        try {
+          const next = JSON.parse(e.newValue)
+          setForm(prev => ({ ...prev, ...next }))
+        } catch {}
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -428,9 +465,32 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       return
     }
     setFileName(f.name)
-    const reader = new FileReader()
-    reader.onload = () => setForm(prev => ({ ...prev, photoUrl: String(reader.result) }))
-    reader.readAsDataURL(f)
+    try {
+      const img = new Image()
+      const reader = new FileReader()
+      reader.onload = () => {
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const maxW = 1280
+          const scale = Math.min(1, maxW / img.width)
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          const ctx = canvas.getContext('2d')
+          if (!ctx) { setSubmitError('Canvas unavailable'); return }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          let q = 0.75
+          let url = canvas.toDataURL('image/jpeg', q)
+          const est = (u: string) => { const b64 = u.split(',')[1] || ''; return Math.ceil((b64.length * 3) / 4) }
+          while (est(url) > MAX_SIZE && q > 0.4) { q -= 0.15; url = canvas.toDataURL('image/jpeg', q) }
+          if (est(url) > MAX_SIZE) { setSubmitError('Compressed image still too large. Try a smaller file.'); return }
+          setForm(prev => ({ ...prev, photoUrl: url }))
+        }
+        img.src = String(reader.result)
+      }
+      reader.readAsDataURL(f)
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Failed to process image')
+    }
   }
 
   // Camera capture state and helpers
@@ -827,18 +887,23 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     setOk('')
     if (!validate()) return
     setSaving(true)
+    setSubmitStage('submit')
     try {
-      await onSubmit(form)
+      const { photoUrl, ...meta } = form as any
+      await onSubmit({ ...(meta as any), photoUrl } as any)
+      setSubmitStage(photoUrl ? 'upload' : 'finalize')
       setOk('Complaint submitted successfully')
       localStorage.removeItem('complaintDraft')
       // Fully clear the form after successful submission
       setForm({ title: '', type: '', description: '', contact: '', category: '', photoUrl: '', location: { address: '' } } as any)
       setFileName('')
       setErrors({})
+      setSubmitStage('finalize')
     } catch (err: any) {
       setSubmitError(err?.message || 'Failed to submit complaint. Please try again.')
     } finally {
       setSaving(false)
+      setSubmitStage('idle')
     }
   }
 
@@ -925,7 +990,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       <div className="file-row">
         <label className="file">
           <span className="file-label">Upload Photo</span>
-          <input type="file" accept="image/*" onChange={handleFile} ref={fileInputRef} />
+          <input type="file" accept="image/*" capture="environment" onChange={handleFile} ref={fileInputRef} />
         </label>
         {fileName && <span className="file-name" title={fileName}>{fileName}</span>}
         {/* Camera capture control beside upload */}
@@ -966,8 +1031,11 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
           <span className="form-error" role="alert" style={{ marginLeft: 8 }}>{submitError}</span>
         )}
       </div>
-      <div className="actions">
-        <button className="btn primary" type="submit" disabled={saving}>Submit</button>
+      <div className="actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button className="btn primary" type="submit" disabled={saving}>{saving ? 'Submitting…' : 'Submit'}</button>
+        {saving && submitStage !== 'idle' && (
+          <span className="muted">{submitStage === 'submit' ? 'Sending…' : submitStage === 'upload' ? 'Uploading photo…' : 'Finalizing…'}</span>
+        )}
         {ok && <span className="muted" style={{ marginLeft: 12 }}>{ok}</span>}
       </div>
     </form>
