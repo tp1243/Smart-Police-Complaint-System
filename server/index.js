@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import compression from 'compression'
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
@@ -13,6 +14,7 @@ import AppleStrategy from 'passport-apple'
 ////////////
 const app = express()
 app.use(cors({ origin: true }))
+app.use(compression({ level: 6 }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(passport.initialize())
@@ -409,6 +411,11 @@ const complaintSchema = new mongoose.Schema({
   nearestDistanceKm: { type: Number },
 }, { timestamps: true })
 
+// Performance indexes for faster dashboard queries
+complaintSchema.index({ userId: 1, createdAt: -1 })
+complaintSchema.index({ station: 1, status: 1, createdAt: -1 })
+complaintSchema.index({ station: 1, createdAt: -1 })
+
 const Complaint = mongoose.model('Complaint', complaintSchema)
 
 // Notification schema
@@ -545,8 +552,15 @@ app.post('/api/complaints', authMiddleware, async (req, res) => {
 // List complaints for current user
 app.get('/api/complaints', authMiddleware, async (req, res) => {
   try {
-    const complaints = await Complaint.find({ userId: req.user.id }).sort({ createdAt: -1 })
-    return res.json({ complaints })
+    const { page = 1, limit = 50, fields = '' } = req.query
+    const q = { userId: req.user.id }
+    let cursor = Complaint.find(q).sort({ createdAt: -1 }).limit(Number(limit) * 1).skip((Number(page) - 1) * Number(limit))
+    if (String(fields).toLowerCase() === 'summary') {
+      cursor = cursor.select('title type status createdAt location photoUrl station nearestDistanceKm')
+    }
+    const complaints = await cursor
+    const total = await Complaint.countDocuments(q)
+    return res.json({ complaints, totalPages: Math.ceil(total / Number(limit)), currentPage: Number(page), total })
   } catch (err) {
     console.error('List complaints error:', err)
     return res.status(500).json({ error: 'Server error' })
@@ -725,21 +739,25 @@ function policeAuthMiddleware(req, res, next) {
 app.get('/api/police/complaints', policeAuthMiddleware, async (req, res) => {
   try {
     const { station } = req.officer
-    const { status, page = 1, limit = 50 } = req.query
+    const { status, page = 1, limit = 50, fields = '' } = req.query
     
+    function regexEscape(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
     let query = {}
     if (station && station !== 'All Stations') {
-      query = { station }
+      const pattern = `^${regexEscape(String(station).trim())}$`
+      query = { station: { $regex: pattern, $options: 'i' } }
     }
     if (status) {
       query.status = status
     }
     
-    const complaints = await Complaint.find(query)
-      .populate('userId', 'username email phone')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+    let q = Complaint.find(query).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit)
+    if (String(fields).toLowerCase() === 'summary') {
+      q = q.select('title type status createdAt location photoUrl station')
+    } else {
+      q = q.populate('userId', 'username email phone')
+    }
+    const complaints = await q
     
     const total = await Complaint.countDocuments(query)
     
@@ -856,7 +874,7 @@ app.get('/api/police/stats', policeAuthMiddleware, async (req, res) => {
     const { station } = req.officer;
     let query = {};
     if (station) {
-        query = { station: station };
+        query = { station: { $regex: `^${String(station).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } };
     }
 
     const [total, pending, inProgress, solved, underReview] = await Promise.all([

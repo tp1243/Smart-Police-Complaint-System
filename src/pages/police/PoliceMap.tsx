@@ -8,7 +8,7 @@ export default function PoliceMap({ token }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    policeApi.listComplaints(token).then((res) => {
+    policeApi.listComplaints(token, { fields: 'summary', limit: 200 }).then((res) => {
       const pts = res.complaints.map((c: any) => c.location || {}).filter((loc: any) => typeof loc.lat === 'number' && typeof loc.lng === 'number')
       setPoints(pts)
     }).catch((err) => setError(err.message || 'Failed to load map data'))

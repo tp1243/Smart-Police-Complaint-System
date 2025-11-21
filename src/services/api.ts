@@ -15,7 +15,7 @@ function normalizeBase(u: string) {
 async function ping(url: string) {
   try {
     const ctrl = new AbortController()
-    const t = setTimeout(() => ctrl.abort(), 4000)
+    const t = setTimeout(() => ctrl.abort(), 1500)
     const r = await fetch(`${url}/health`, { method: 'GET', signal: ctrl.signal })
     clearTimeout(t)
     return r.ok
@@ -30,12 +30,17 @@ async function resolveApiBase(): Promise<string> {
   const envBase = apiBaseRaw || ''
   const defaultRender = 'https://smart-police-complaint-system.onrender.com'
   const sameOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-  const candidates = [override, envBase, defaultRender, sameOrigin].map(normalizeBase).filter(Boolean)
+  const candidates = [defaultRender, override, envBase, sameOrigin].map(normalizeBase).filter(Boolean)
+  if (override && normalizeBase(override) === normalizeBase(defaultRender)) {
+    cachedApiBase = normalizeBase(defaultRender)
+    if (typeof window !== 'undefined') localStorage.setItem('apiResolved', cachedApiBase)
+    return cachedApiBase
+  }
   for (const c of candidates) {
     const ok = await ping(c)
     if (ok) { cachedApiBase = c; if (typeof window !== 'undefined') localStorage.setItem('apiResolved', c); return c }
   }
-  cachedApiBase = candidates[0] || 'https://smart-police-complaint-system.onrender.com/api'
+  cachedApiBase = normalizeBase(defaultRender)
   return cachedApiBase
 }
 
@@ -43,7 +48,7 @@ export async function request<T>(path: string, options: RequestInit): Promise<T>
   const base = await resolveApiBase()
   const mergedHeaders = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   const finalOptions: RequestInit = { ...options, headers: mergedHeaders }
-  const res = await fetch(`${base}${path}`, finalOptions)
+  const res = await fetch(`${base}${path}`, { ...finalOptions, keepalive: true, mode: 'cors', cache: 'no-store' })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || `Request failed: ${res.status}`)

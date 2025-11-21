@@ -13,7 +13,7 @@ export default function PoliceReports({ token }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    policeApi.listComplaints(token).then((res) => {
+    policeApi.listComplaints(token, { fields: 'summary', limit: 200 }).then((res) => {
       const stats = res.complaints.reduce((acc: any, c: any) => {
         acc[c.status] = (acc[c.status] || 0) + 1
         return acc
