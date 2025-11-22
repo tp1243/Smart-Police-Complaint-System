@@ -44,14 +44,21 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
   useEffect(() => {
     let active = true
     setLoading(true)
-    policeApi.listComplaints(token, { fields: 'summary', limit: 100 }).then((res) => {
+    const statusParam = filter === 'active' ? 'active' : filter === 'pending' ? 'pending' : filter === 'completed' ? 'completed' : ''
+    try {
+      const cacheKey = `policeComplaintsCache:${statusParam || 'all'}`
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null')
+      if (cached && Array.isArray(cached)) { setItems(cached); setLoading(false) }
+    } catch {}
+    policeApi.listComplaints(token, { status: statusParam || undefined, fields: 'summary', limit: 100 }).then((res) => {
       if (!active) return
       let rows = res.complaints
-      if (filter === 'active') rows = rows.filter((c: any) => c.status === 'In Progress' || c.status === 'Under Review')
-      if (filter === 'pending') rows = rows.filter((c: any) => c.status === 'Pending')
-      if (filter === 'completed') rows = rows.filter((c: any) => c.status === 'Solved')
       setItems(rows)
       setLoading(false)
+      try {
+        const cacheKey = `policeComplaintsCache:${statusParam || 'all'}`
+        localStorage.setItem(cacheKey, JSON.stringify(rows))
+      } catch {}
     }).catch((err) => { setError(err.message || 'Failed to load complaints'); setLoading(false) })
     return () => { active = false }
   }, [token, filter])
@@ -60,11 +67,9 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const res = await policeApi.listComplaints(token, { fields: 'summary', limit: 100 })
+        const statusParam = filter === 'active' ? 'active' : filter === 'pending' ? 'pending' : filter === 'completed' ? 'completed' : ''
+        const res = await policeApi.listComplaints(token, { status: statusParam || undefined, fields: 'summary', limit: 100 })
         let rows = res.complaints
-        if (filter === 'active') rows = rows.filter((c: any) => c.status === 'In Progress' || c.status === 'Under Review')
-        if (filter === 'pending') rows = rows.filter((c: any) => c.status === 'Pending')
-        if (filter === 'completed') rows = rows.filter((c: any) => c.status === 'Solved')
         const oldIds = new Set(itemsRef.current.map(c => c._id))
         const newIds = new Set(rows.map((c: any) => c._id))
         let hasNew = false

@@ -755,10 +755,34 @@ app.get('/api/police/complaints', policeAuthMiddleware, async (req, res) => {
       query = { station: { $regex: pattern, $options: 'i' } }
     }
     if (status) {
-      query.status = status
+      const norm = String(status).trim().toLowerCase()
+      if (norm.includes(',')) {
+        const list = norm.split(',').map(s => s.trim()).filter(Boolean)
+        const mapped = list.map(s => (
+          s === 'pending' ? 'Pending' :
+          s === 'completed' ? 'Solved' :
+          s === 'solved' ? 'Solved' :
+          s === 'active' ? null :
+          s === 'in progress' || s === 'in_progress' ? 'In Progress' :
+          s === 'under review' || s === 'under_review' ? 'Under Review' : s
+        )).filter(Boolean)
+        if (mapped.length > 0) query.status = { $in: mapped }
+      } else if (norm === 'active') {
+        query.status = { $in: ['In Progress', 'Under Review'] }
+      } else if (norm === 'pending') {
+        query.status = 'Pending'
+      } else if (norm === 'completed' || norm === 'solved') {
+        query.status = 'Solved'
+      } else if (norm === 'in_progress' || norm === 'in progress') {
+        query.status = 'In Progress'
+      } else if (norm === 'under_review' || norm === 'under review') {
+        query.status = 'Under Review'
+      } else {
+        query.status = status
+      }
     }
     
-    let q = Complaint.find(query).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit)
+    let q = Complaint.find(query).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit).lean()
     if (String(fields).toLowerCase() === 'summary') {
       q = q.select('title type status createdAt location photoUrl station')
     } else {
