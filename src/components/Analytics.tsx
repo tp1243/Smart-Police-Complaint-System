@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Line, Bar } from 'react-chartjs-2'
 import { Chart, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend } from 'chart.js'
 import { complaintsApi } from '../services/complaints'
-import jsPDF from 'jspdf'
 
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend)
 
@@ -58,15 +57,17 @@ export default function Analytics({ token, refreshSignal }: Props) {
 }
 
 function exportAnalyticsPdf(months: string[], monthly: number[], solvedRate: number[]) {
-  const doc = new jsPDF()
-  doc.setFontSize(16)
-  doc.text('Analytics Summary', 14, 20)
-  doc.setFontSize(12)
-  let y = 30
-  doc.text('Monthly Complaints:', 14, y); y += 8
-  months.forEach((m, i) => { doc.text(`${m}: ${monthly[i]}`, 18, y); y += 6 })
-  y += 6
-  doc.text('Resolution Rate (%):', 14, y); y += 8
-  months.forEach((m, i) => { doc.text(`${m}: ${solvedRate[i]}%`, 18, y); y += 6 })
-  doc.save('analytics-summary.pdf')
+  import('jspdf').then(({ default: jsPDF }) => {
+    const doc = new jsPDF()
+    doc.setFontSize(16)
+    doc.text('Analytics Summary', 14, 20)
+    doc.setFontSize(12)
+    let y = 30
+    doc.text('Monthly Complaints:', 14, y); y += 8
+    months.forEach((m, i) => { doc.text(`${m}: ${monthly[i]}`, 18, y); y += 6 })
+    y += 6
+    doc.text('Resolution Rate (%):', 14, y); y += 8
+    months.forEach((m, i) => { doc.text(`${m}: ${solvedRate[i]}%`, 18, y); y += 6 })
+    doc.save('analytics-summary.pdf')
+  })
 }

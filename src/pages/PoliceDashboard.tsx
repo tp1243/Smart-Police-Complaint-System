@@ -2,15 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PoliceNavbar from '../components/police/PoliceNavbar'
 import PoliceSidebar from '../components/police/PoliceSidebar'
-import PoliceOverview from './police/PoliceOverview'
-import PoliceComplaints from './police/PoliceComplaints'
-import PoliceMap from './police/PoliceMap'
-import PoliceReports from './police/PoliceReports'
-import PoliceChat from './police/PoliceChat'
-import PoliceAlerts from './police/PoliceAlerts'
-import PoliceOfficers from './police/PoliceOfficers'
-import PoliceSettings from './police/PoliceSettings'
-import PoliceNotifications from './police/PoliceNotifications'
+import { Suspense, lazy } from 'react'
+const PoliceOverview = lazy(() => import('./police/PoliceOverview'))
+const PoliceComplaints = lazy(() => import('./police/PoliceComplaints'))
+const PoliceMap = lazy(() => import('./police/PoliceMap'))
+const PoliceReports = lazy(() => import('./police/PoliceReports'))
+const PoliceChat = lazy(() => import('./police/PoliceChat'))
+const PoliceAlerts = lazy(() => import('./police/PoliceAlerts'))
+const PoliceOfficers = lazy(() => import('./police/PoliceOfficers'))
+const PoliceSettings = lazy(() => import('./police/PoliceSettings'))
+const PoliceNotifications = lazy(() => import('./police/PoliceNotifications'))
 
 export default function PoliceDashboard() {
   const navigate = useNavigate()
@@ -39,25 +40,25 @@ export default function PoliceDashboard() {
   const content = useMemo(() => {
     switch (section) {
       case 'overview':
-        return <PoliceOverview token={token} station={officer?.station} />
+        return <Suspense fallback={<div />}> <PoliceOverview token={token} station={officer?.station} /> </Suspense>
       case 'active':
       case 'pending':
       case 'completed':
-        return <PoliceComplaints token={token} filter={section} officer={officer || undefined} />
+        return <Suspense fallback={<div />}> <PoliceComplaints token={token} filter={section} officer={officer || undefined} /> </Suspense>
       case 'map':
-        return <PoliceMap token={token} />
+        return <Suspense fallback={<div />}> <PoliceMap token={token} /> </Suspense>
       case 'analytics':
-        return <PoliceReports token={token} />
+        return <Suspense fallback={<div />}> <PoliceReports token={token} /> </Suspense>
       case 'chat':
-        return <PoliceChat token={token} officer={officer || undefined} />
+        return <Suspense fallback={<div />}> <PoliceChat token={token} officer={officer || undefined} /> </Suspense>
       case 'alerts':
-        return <PoliceAlerts token={token} />
+        return <Suspense fallback={<div />}> <PoliceAlerts token={token} /> </Suspense>
       case 'notifications':
-        return <PoliceNotifications token={token} />
+        return <Suspense fallback={<div />}> <PoliceNotifications token={token} /> </Suspense>
       case 'officers':
-        return <PoliceOfficers token={token} />
+        return <Suspense fallback={<div />}> <PoliceOfficers token={token} /> </Suspense>
       case 'settings':
-        return <PoliceSettings token={token} />
+        return <Suspense fallback={<div />}> <PoliceSettings token={token} /> </Suspense>
       case 'help':
         return (
           <div className="panel">
@@ -65,7 +66,7 @@ export default function PoliceDashboard() {
           </div>
         )
       default:
-        return <PoliceOverview token={token} />
+        return <Suspense fallback={<div />}> <PoliceOverview token={token} /> </Suspense>
     }
   }, [section, token, officer])
 

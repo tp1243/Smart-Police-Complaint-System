@@ -42,7 +42,20 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(res.user))
       navigate('/user')
     } catch (err: any) {
-      setError(err.message || 'Login failed')
+      const msg = err?.message || ''
+      if (msg.toLowerCase().includes('timeout')) {
+        await new Promise(r => setTimeout(r, 800))
+        try {
+          const res = await api.login(email, password)
+          localStorage.setItem('token', res.token)
+          localStorage.setItem('user', JSON.stringify(res.user))
+          navigate('/user')
+        } catch (e2: any) {
+          setError(e2?.message || 'Login failed')
+        }
+      } else {
+        setError(msg || 'Login failed')
+      }
     } finally {
       setLoading(false)
     }

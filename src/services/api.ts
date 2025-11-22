@@ -53,12 +53,22 @@ export async function request<T>(path: string, options: RequestInit): Promise<T>
     const bodyStr = typeof finalOptions.body === 'string' ? finalOptions.body : ''
     if (bodyStr && bodyStr.length > 60000) keepalive = false
   } catch {}
-  const res = await fetch(`${base}${path}`, { ...finalOptions, keepalive, mode: 'cors', cache: 'no-store' })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `Request failed: ${res.status}`)
+  const timeoutMs = String(finalOptions.method || 'GET').toUpperCase() === 'GET' ? 8000 : 12000
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${base}${path}`, { ...finalOptions, keepalive, mode: 'cors', cache: 'no-store', signal: ctrl.signal })
+    clearTimeout(timer)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || `Request failed: ${res.status}`)
+    }
+    return res.json()
+  } catch (e: any) {
+    clearTimeout(timer)
+    const msg = e?.name === 'AbortError' ? 'Network timeout. Please try again.' : (e?.message || 'Network error')
+    throw new Error(msg)
   }
-  return res.json()
 }
 
 export const api = {

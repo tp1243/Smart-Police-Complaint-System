@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Bar } from 'react-chartjs-2'
 import { Chart, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
-import jsPDF from 'jspdf'
 import { policeApi } from '../../services/police'
 
 Chart.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
@@ -38,12 +37,14 @@ export default function PoliceReports({ token }: Props) {
   }
 
   function exportPdf() {
-    const doc = new jsPDF()
-    doc.text('Complaints Report', 20, 20)
-    doc.text(`Pending: ${data.pending}`, 20, 40)
-    doc.text(`In Progress: ${data.inProgress}`, 20, 50)
-    doc.text(`Solved: ${data.solved}`, 20, 60)
-    doc.save('report.pdf')
+    import('jspdf').then(({ default: jsPDF }) => {
+      const doc = new jsPDF()
+      doc.text('Complaints Report', 20, 20)
+      doc.text(`Pending: ${data.pending}`, 20, 40)
+      doc.text(`In Progress: ${data.inProgress}`, 20, 50)
+      doc.text(`Solved: ${data.solved}`, 20, 60)
+      doc.save('report.pdf')
+    })
   }
 
   return (

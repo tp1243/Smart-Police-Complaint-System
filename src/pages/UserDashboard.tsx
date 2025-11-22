@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardNavbar from '../components/DashboardNavbar'
 import DashboardSidebar from '../components/DashboardSidebar'
 import ProfileSettings from './ProfileSettings'
-import Analytics from '../components/Analytics'
+import { lazy } from 'react'
+const Analytics = lazy(() => import('../components/Analytics'))
 import { complaintsApi } from '../services/complaints'
 import { api, supportApi,  type ProfileUser } from '../services/api'
 import { notificationsApi } from '../services/notifications'
 import { connectRealtime } from '../services/realtime'
 import { FiHelpCircle, FiMessageCircle, FiStar, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo, FiMenu, FiMic } from 'react-icons/fi'
 import { AnimatePresence, motion } from 'framer-motion'
-import jsPDF from 'jspdf'
 import type { Complaint, ComplaintStatus, NotificationItem } from '../types'
 import { useNotificationSound } from '../components/useNotificationSound'
 import '../notifications.css'
@@ -45,21 +45,23 @@ export default function UserDashboard() {
   useEffect(() => {
     if (!user || !token) { navigate('/login'); return }
     ;(async () => {
-      try {
-        const [p, list, s] = await Promise.all([
-          api.profile(token),
-          complaintsApi.listMine(token, { fields: 'summary', limit: 50 }),
-          complaintsApi.stats(token),
-        ])
-        setProfile(p.user)
-        setComplaints(list.complaints)
-        statusMapRef.current = Object.fromEntries(list.complaints.map(c => [String(c._id || ''), String(c.status || '')]))
-        setStats(s.stats)
-        setLoading(false)
-      } catch (err: any) {
-        setError(err.message || 'Failed to load dashboard')
-        setLoading(false)
+      const results = await Promise.allSettled([
+        api.profile(token),
+        complaintsApi.listMine(token, { fields: 'summary', limit: 50 }),
+        complaintsApi.stats(token),
+      ])
+      const pRes = results[0]
+      const listRes = results[1]
+      const statsRes = results[2]
+      if (pRes.status === 'fulfilled') setProfile(pRes.value.user)
+      if (listRes.status === 'fulfilled') {
+        setComplaints(listRes.value.complaints)
+        statusMapRef.current = Object.fromEntries(listRes.value.complaints.map((c: any) => [String(c._id || ''), String(c.status || '')]))
       }
+      if (statsRes.status === 'fulfilled') setStats(statsRes.value.stats)
+      const someSuccess = results.some(r => r.status === 'fulfilled')
+      if (!someSuccess) setError('Network timeout. Please try again.')
+      setLoading(false)
     })()
   }, [token])
 
@@ -134,11 +136,13 @@ export default function UserDashboard() {
     if (loading) return <div className="panel"><div className="muted">Loading dashboard…</div></div>
     if (error) return <div className="panel error">{error}</div>
 
-    switch (section) {
+  switch (section) {
       case 'overview':
         return (<>
           <Overview stats={stats} complaints={complaints} />
-          <Analytics token={token} refreshSignal={refreshSignal} />
+          <Suspense fallback={<div className="muted">Loading analytics…</div>}>
+            <Analytics token={token} refreshSignal={refreshSignal} />
+          </Suspense>
         </>)
       case 'new':
         return <ComplaintForm onSubmit={submitComplaint} />
@@ -382,17 +386,19 @@ function Timeline({ status }: { status: ComplaintStatus }) {
 
 function DownloadPdfButton({ complaint }: { complaint: Complaint }) {
   function download() {
-    const doc = new jsPDF()
-    doc.text('Smart Police Complaint System', 14, 16)
-    doc.text(`Complaint ID: ${complaint._id || '-'}`, 14, 26)
-    doc.text(`Title: ${complaint.title}`, 14, 36)
-    doc.text(`Type: ${complaint.type}`, 14, 46)
-    doc.text(`Status: ${complaint.status || 'Pending'}`, 14, 56)
-    doc.text(`Station: ${complaint.station || 'Unassigned'}`, 14, 66)
-    if (typeof complaint.nearestDistanceKm === 'number') doc.text(`Nearest distance: ${complaint.nearestDistanceKm.toFixed(1)} km`, 14, 76)
-    doc.text('Description:', 14, 86)
-    doc.text(complaint.description || '', 14, 96)
-    doc.save(`complaint_${complaint._id || 'report'}.pdf`)
+    import('jspdf').then(({ default: jsPDF }) => {
+      const doc = new jsPDF()
+      doc.text('Smart Police Complaint System', 14, 16)
+      doc.text(`Complaint ID: ${complaint._id || '-'}`, 14, 26)
+      doc.text(`Title: ${complaint.title}`, 14, 36)
+      doc.text(`Type: ${complaint.type}`, 14, 46)
+      doc.text(`Status: ${complaint.status || 'Pending'}`, 14, 56)
+      doc.text(`Station: ${complaint.station || 'Unassigned'}`, 14, 66)
+      if (typeof complaint.nearestDistanceKm === 'number') doc.text(`Nearest distance: ${complaint.nearestDistanceKm.toFixed(1)} km`, 14, 76)
+      doc.text('Description:', 14, 86)
+      doc.text(complaint.description || '', 14, 96)
+      doc.save(`complaint_${complaint._id || 'report'}.pdf`)
+    })
   }
   return <button className="btn sm" onClick={download}>Download PDF</button>
 }
