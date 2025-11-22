@@ -1,10 +1,10 @@
 /* Help & Support — polished, professional UI */
 
 .support-panel {
-  --sp-bg: var(--surface, #0b1324);
-  --sp-surface: var(--surface-2, #13203a);
-  --sp-border: var(--border, #24324a);
-  --sp-muted: #8a8a8a;
+  --sp-bg: var(--surface, #111827);
+  --sp-surface: var(--surface-2, #0f172a);
+  --sp-border: var(--border, #bc0912);
+  --sp-muted: #9ca3af;
   --sp-text: var(--text, #e6edf7);
   --sp-primary: var(--primary, #38bdf8);
   --sp-success: #10b981;
@@ -50,11 +50,11 @@
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
 }
-.support-panel .tabs.compact .tab:hover { background: #f3f4f6; }
+.support-panel .tabs.compact .tab:hover { background: rgba(255,255,255,0.04); }
 .support-panel .tabs.compact .tab.active {
   border-color: var(--sp-primary);
-  background: rgba(14,165,233,0.12);
-  color: var(--sp-primary);
+  background: var(--sp-surface);
+  color: var(--sp-text);
 }
 
 /* FAQ */
@@ -97,7 +97,7 @@
   border-radius: 12px;
   overflow: hidden;
 }
-.support-panel .accordion-item { border-top: 1px solid var(--sp-border); background: var(--sp-bg); }
+.support-panel .accordion-item { border-top: 1px solid var(--sp-border); background: var(--sp-bg); transition: box-shadow 0.2s ease, transform 0.12s ease; }
 .support-panel .accordion-item:first-child { border-top: none; }
 .support-panel .accordion-header {
   width: 100%;
@@ -106,13 +106,14 @@
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: transparent;
+  background: var(--sp-surface);
   color: var(--sp-text);
   cursor: pointer;
 }
+.support-panel .accordion-item.open { box-shadow: 0 8px 20px rgba(0,0,0,0.08); transform: translateY(-1px); }
 .support-panel .accordion-item.open .accordion-header { background: var(--sp-surface); }
 .support-panel .accordion-body { border-top: 1px solid var(--sp-border); padding: 12px 14px; background: var(--sp-bg); color: var(--sp-text); overflow: hidden; }
-.support-panel .accordion-header .question { font-weight: 700; font-size: 18px; }
+.support-panel .accordion-header .question { font-weight: 700; font-size: 18px; color: #d1d5db; }
 .support-panel .accordion-header svg { transition: transform 0.2s ease, color 0.2s ease; }
 .support-panel .accordion-item.open .accordion-header svg { transform: rotate(180deg); color: var(--sp-primary); }
 .support-panel .accordion-body p { font-size: 14px; line-height: 1.55; }

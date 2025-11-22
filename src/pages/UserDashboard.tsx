@@ -8,7 +8,7 @@ import { complaintsApi } from '../services/complaints'
 import { api, supportApi,  type ProfileUser } from '../services/api'
 import { notificationsApi } from '../services/notifications'
 import { connectRealtime } from '../services/realtime'
-import { FiHelpCircle, FiMessageCircle, FiFileText, FiStar, FiPhone, FiBookOpen, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiPaperclip, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo, FiMenu, FiMic } from 'react-icons/fi'
+import { FiHelpCircle, FiMessageCircle, FiStar, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo, FiMenu, FiMic } from 'react-icons/fi'
 import { AnimatePresence, motion } from 'framer-motion'
 import jsPDF from 'jspdf'
 import type { Complaint, ComplaintStatus, NotificationItem } from '../types'
@@ -1209,29 +1209,23 @@ function NotificationsPanel({ token }: { token: string }) {
   )
 }
 
-function SupportPanel({ token, profile, defaultTab = 'faq' }: { token: string; profile: ProfileUser | null; defaultTab?: 'faq' | 'ticket' | 'chat' | 'contact' | 'feedback' | 'guides' }) {
-  const [tab, setTab] = useState<'faq' | 'ticket' | 'chat' | 'contact' | 'feedback' | 'guides'>(defaultTab)
+function SupportPanel({ token, profile, defaultTab = 'faq' }: { token: string; profile: ProfileUser | null; defaultTab?: 'faq' | 'chat' | 'feedback' }) {
+  const [tab, setTab] = useState<'faq' | 'chat' | 'feedback'>(defaultTab)
   return (
     <div className="panel support-panel">
       <div className="support-header">
         <h2>Help & Support</h2>
-        <p className="muted">Find answers, raise tickets, chat, or contact support.</p>
+        <p className="muted">Find answers in FAQs, chat live, or share feedback.</p>
       </div>
       <div className="tabs compact">
         <button className={`tab ${tab === 'faq' ? 'active' : ''}`} onClick={() => setTab('faq')}><FiHelpCircle /> <span>FAQs</span></button>
-        <button className={`tab ${tab === 'ticket' ? 'active' : ''}`} onClick={() => setTab('ticket')}><FiFileText /> <span>Support Ticket</span></button>
         <button className={`tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}><FiMessageCircle /> <span>Live Chat</span></button>
-        <button className={`tab ${tab === 'contact' ? 'active' : ''}`} onClick={() => setTab('contact')}><FiPhone /> <span>Contact</span></button>
         <button className={`tab ${tab === 'feedback' ? 'active' : ''}`} onClick={() => setTab('feedback')}><FiStar /> <span>Feedback</span></button>
-        <button className={`tab ${tab === 'guides' ? 'active' : ''}`} onClick={() => setTab('guides')}><FiBookOpen /> <span>Guidelines</span></button>
       </div>
       <div className="tab-body">
         {tab === 'faq' && <FaqSection token={token} />}
-        {tab === 'ticket' && <TicketFormSupport token={token} profile={profile} />}
         {tab === 'chat' && <LiveChatWidget token={token} />}
-        {tab === 'contact' && <ContactSupport profile={profile} />}
         {tab === 'feedback' && <FeedbackSection profile={profile} />}
-        {tab === 'guides' && <GuidesResources />}
       </div>
     </div>
   )
@@ -1375,93 +1369,6 @@ function FaqSection({ token }: { token: string }) {
   )
 }
 
-function TicketFormSupport({ token, profile }: { token: string; profile: ProfileUser | null }) {
-  const [email, setEmail] = useState<string>(profile?.email || '')
-  const [phone, setPhone] = useState<string>('')
-  const [complaintId, setComplaintId] = useState<string>('')
-  const [category, setCategory] = useState<string>('App Bug')
-  const [description, setDescription] = useState<string>('')
-  const [screenshotData, setScreenshotData] = useState<string>('')
-  const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState<{ number: string } | null>(null)
-
-  function onFile(e: any) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setScreenshotData(String(reader.result))
-    reader.readAsDataURL(file)
-  }
-
-  async function submit(e: any) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const r = await supportApi.createTicket(token, { email, phone, complaintId, category, description, screenshotData })
-      setSuccess({ number: r.ticket.ticketNumber })
-    } catch (err: any) {
-      alert(err.message || 'Failed to submit ticket')
-    } finally { setSaving(false) }
-  }
-
-  return (
-    <div className="ticket-form">
-      <form onSubmit={submit} className="form-card">
-        <div className="grid two">
-          <label>Full Name
-            <input value={profile?.username || ''} readOnly />
-          </label>
-          <label>Email
-            <input value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </label>
-        </div>
-        <div className="grid two">
-          <label>Phone
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" />
-          </label>
-          <label>Complaint ID
-            <input value={complaintId} onChange={(e) => setComplaintId(e.target.value)} placeholder="Optional if related" />
-          </label>
-        </div>
-        <div className="grid two">
-          <label>Issue Category
-            <select value={category} onChange={(e) => setCategory(e.target.value)} required>
-              <option>App Bug</option>
-              <option>Login Issue</option>
-              <option>Complaint Update</option>
-              <option>Other</option>
-            </select>
-          </label>
-          <label>Upload Screenshot
-            <div className="file-input">
-              <FiPaperclip />
-              <input type="file" accept="image/*" onChange={onFile} />
-            </div>
-          </label>
-        </div>
-        <label>Description
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={5} placeholder="Describe your issue in detail" />
-        </label>
-        <div className="actions">
-          <button className="btn primary" type="submit" disabled={saving}>Submit Ticket</button>
-        </div>
-      </form>
-      {success && (
-        <div className="modal">
-          <div className="modal-body">
-            <h3>Ticket Submitted</h3>
-            <p>Your ticket number is <b>{success.number}</b>.</p>
-            <p>We sent a confirmation and will get back soon.</p>
-            <div className="actions">
-              <a className="btn" href="#" onClick={(e) => { e.preventDefault(); setSuccess(null) }}>Close</a>
-              <a className="btn ghost" href="#" onClick={(e) => { e.preventDefault(); setSuccess(null) }}>Track Ticket</a>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function LiveChatWidget({ token }: { token: string }) {
   const [open, setOpen] = useState(true)
@@ -1503,57 +1410,6 @@ function LiveChatWidget({ token }: { token: string }) {
     </div>
   )
 }
-
-function ContactSupport({ profile }: { profile: ProfileUser | null }) {
-  const [city, setCity] = useState<string>('')
-  const [info, setInfo] = useState<{ helplines: Array<{ label: string; number: string }>; email: string; hours: string; links: Record<string, string>; station: { address: string; mapUrl: string } } | null>(null)
-  useEffect(() => {
-    const guessedCity = (profile?.address || '').split(',').map(s => s.trim())[0] || ''
-    setCity(guessedCity)
-  }, [profile])
-  useEffect(() => { supportApi.supportContact(city).then(setInfo).catch(() => {}) }, [city])
-  return (
-    <div className="contact-grid">
-      <div className="card">
-        <div className="label">Helplines</div>
-        <div className="list small">
-          {info?.helplines.map(h => (
-            <div className="row" key={h.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>{h.label}</span>
-              <a className="btn accent" href={`tel:${h.number}`}>Call {h.number}</a>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="card">
-        <div className="label">Support Email</div>
-        <div className="email-row">
-          <p style={{ margin: 0 }}><a href={`mailto:${info?.email}`}>{info?.email}</a></p>
-          <button className="btn sm ghost" onClick={() => navigator.clipboard.writeText(info?.email || '')}>Copy</button>
-        </div>
-        <div className="muted">Hours: {info?.hours}</div>
-        {info?.links && (
-          <div className="chips" style={{ marginTop: 8 }}>
-            {Object.entries(info.links).map(([k, v]) => (
-              <a key={k} className="chip" href={v} target="_blank" rel="noreferrer">{k}</a>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="card">
-        <div className="label">Nearest Police Station</div>
-        <p>{info?.station.address}</p>
-        {info?.station.mapUrl && <iframe title="map" src={info.station.mapUrl} style={{ width: '100%', minHeight: 220, border: 0, borderRadius: 10 }} />}
-        <div className="city-row">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>City
-            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Enter city" />
-          </label>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
   const [rating, setRating] = useState<number>(0)
   const [text, setText] = useState<string>('')
@@ -1650,48 +1506,6 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
             </li>
           ))}
         </ul>
-      </div>
-    </div>
-  )
-}
-
-function GuidesResources() {
-  const guides = [
-    { title: 'How to File a Complaint', desc: 'Step-by-step guide to submit a complaint correctly.', href: '#', icon: <FiFileText />, category: 'Reporting', read: '4 min' },
-    { title: 'Cybercrime Awareness', desc: 'Learn common cyber threats and prevention.', href: '#', icon: <FiBookOpen />, category: 'Awareness', read: '6 min' },
-    { title: 'How Police Handle Reports', desc: 'Understand the review and investigation process.', href: '#', icon: <FiHelpCircle />, category: 'Process', read: '5 min' },
-  ]
-  const [cat, setCat] = useState<string>('All')
-  const categories = ['All', 'Reporting', 'Awareness', 'Process']
-  const items = guides.filter(g => cat === 'All' ? true : g.category === cat)
-  return (
-    <div>
-      <div className="guides-header">
-        <h3>Guidelines & Resources</h3>
-        <p className="muted">Browse best practices, cyber awareness, and process insights.</p>
-      </div>
-      <div className="guide-filters">
-        {categories.map(c => (
-          <button key={c} className={`pill ${cat === c ? 'active' : ''}`} onClick={() => setCat(c)}>{c}</button>
-        ))}
-      </div>
-      <div className="guides-grid">
-        {items.map((g, i) => (
-          <a key={i} className="guide-card" href={g.href} target="_blank" rel="noreferrer">
-            <div className="icon">{g.icon}</div>
-            <div className="content">
-              <div className="title">{g.title}</div>
-              <div className="muted">{g.desc}</div>
-              <div className="guide-meta">
-                <span className="badge">{g.category}</span>
-                <span className="read">{g.read}</span>
-              </div>
-              <div className="guide-actions">
-                <span className="btn sm">Read Guide</span>
-              </div>
-            </div>
-          </a>
-        ))}
       </div>
     </div>
   )
