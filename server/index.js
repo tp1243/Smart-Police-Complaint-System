@@ -15,6 +15,13 @@ import AppleStrategy from 'passport-apple'
 const app = express()
 app.use(cors({ origin: true }))
 app.use(compression({ level: 6 }))
+app.use((req, res, next) => {
+  try {
+    res.set('Cache-Control', 'no-store')
+    res.set('X-Content-Type-Options', 'nosniff')
+  } catch {}
+  next()
+})
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(passport.initialize())

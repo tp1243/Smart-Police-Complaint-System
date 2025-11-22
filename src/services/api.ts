@@ -48,7 +48,12 @@ export async function request<T>(path: string, options: RequestInit): Promise<T>
   const base = await resolveApiBase()
   const mergedHeaders = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   const finalOptions: RequestInit = { ...options, headers: mergedHeaders }
-  const res = await fetch(`${base}${path}`, { ...finalOptions, keepalive: true, mode: 'cors', cache: 'no-store' })
+  let keepalive = true
+  try {
+    const bodyStr = typeof finalOptions.body === 'string' ? finalOptions.body : ''
+    if (bodyStr && bodyStr.length > 60000) keepalive = false
+  } catch {}
+  const res = await fetch(`${base}${path}`, { ...finalOptions, keepalive, mode: 'cors', cache: 'no-store' })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || `Request failed: ${res.status}`)

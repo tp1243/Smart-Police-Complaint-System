@@ -111,12 +111,14 @@ export default function UserDashboard() {
       res = await complaintsApi.create(meta as any, token)
     }
     setComplaints(prev => [res.complaint, ...prev])
-    const tasks: Array<Promise<any>> = []
-    tasks.push(complaintsApi.stats(token))
+    const statsPromise = complaintsApi.stats(token)
     if (photoUrl) {
-      tasks.push(complaintsApi.update(token, String(res.complaint._id), { photoUrl }))
+      try {
+        // Attempt photo attach, but do not fail the overall submission if it errors
+        await complaintsApi.update(token, String(res.complaint._id), { photoUrl })
+      } catch {}
     }
-    const [statsRes] = await Promise.all(tasks)
+    const statsRes = await statsPromise.catch(() => null)
     if (statsRes?.stats) setStats(statsRes.stats)
     setRefreshSignal(v => v + 1)
     setSection('my')
