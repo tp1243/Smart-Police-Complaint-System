@@ -563,7 +563,7 @@ app.get('/api/complaints', authMiddleware, async (req, res) => {
     const q = { userId: req.user.id }
     let cursor = Complaint.find(q).sort({ createdAt: -1 }).limit(Number(limit) * 1).skip((Number(page) - 1) * Number(limit))
     if (String(fields).toLowerCase() === 'summary') {
-      cursor = cursor.select('title type status createdAt location photoUrl station nearestDistanceKm')
+      cursor = cursor.select('title type category status createdAt location photoUrl station nearestDistanceKm')
     }
     const complaints = await cursor
     const total = await Complaint.countDocuments(q)
@@ -784,7 +784,7 @@ app.get('/api/police/complaints', policeAuthMiddleware, async (req, res) => {
     
     let q = Complaint.find(query).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit).lean()
     if (String(fields).toLowerCase() === 'summary') {
-      q = q.select('title type status createdAt location photoUrl station')
+      q = q.select('title type category status createdAt location photoUrl station')
     } else {
       q = q.populate('userId', 'username email phone')
     }

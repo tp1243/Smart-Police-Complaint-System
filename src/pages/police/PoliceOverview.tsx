@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Bar, Line, Doughnut } from 'react-chartjs-2'
-import { Chart, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, ArcElement } from 'chart.js'
+import { Bar, Line } from 'react-chartjs-2'
+import { Chart, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend } from 'chart.js'
 import { policeApi } from '../../services/police'
 
-Chart.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, ArcElement)
+Chart.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend)
 
 type Props = { token: string; station?: string }
 
 export default function PoliceOverview({ token, station }: Props) {
   const [barData, setBarData] = useState<any>({ labels: ['Pending','In Progress','Solved'], datasets: [{ label: 'Complaints', backgroundColor: '#38bdf8', data: [0,0,0] }] })
   const [lineData, setLineData] = useState<any>({ labels: [], datasets: [{ label: 'Trend', borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.2)', data: [] }] })
-  const [firData, setFirData] = useState<any>({ labels: ['FIR','Non-FIR'], datasets: [{ data: [0,0], backgroundColor: ['#ef4444','#3b82f6'] }] })
+  const [firCount, setFirCount] = useState<number>(0)
+  const [nonFirCount, setNonFirCount] = useState<number>(0)
   const [heatPoints, setHeatPoints] = useState<Array<{ lat: number; lng: number }>>([])
   const [heatBounds, setHeatBounds] = useState<{ minLat: number; maxLat: number; minLng: number; maxLng: number } | null>(null)
 
@@ -18,7 +19,6 @@ export default function PoliceOverview({ token, station }: Props) {
     let active = true
     function compute(complaints: any[]) {
       const scoped = station ? complaints.filter((c) => (c.station || '').trim() === station) : complaints
-      const total = scoped.length
       const solved = scoped.filter((c) => (c.status || '') === 'Solved').length
       const pending = scoped.filter((c) => (c.status || '') === 'Pending').length
       const inProgress = scoped.filter((c) => ['In Progress','Under Review'].includes(c.status || '')).length
@@ -36,10 +36,10 @@ export default function PoliceOverview({ token, station }: Props) {
         }).length
       })
       setLineData({ labels, datasets: [{ label: 'Trend', borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.2)', data: counts }] })
-      const firSet = new Set(['Robbery','Assault','Theft','Accident'])
-      const fir = scoped.filter((c) => String(c.category || '').toLowerCase() === 'fir' || firSet.has(String(c.type || ''))).length
-      const nonFir = Math.max(total - fir, 0)
-      setFirData({ labels: ['FIR','Non-FIR'], datasets: [{ data: [fir, nonFir], backgroundColor: ['#ef4444','#3b82f6'] }] })
+      const fir = scoped.filter((c) => String(c.category || '').trim().toLowerCase() === 'fir').length
+      const nonFir = scoped.filter((c) => String(c.category || '').trim().toLowerCase() === 'non-fir').length
+      setFirCount(fir)
+      setNonFirCount(nonFir)
       const pts = scoped.map((c) => c.location || {}).filter((loc) => typeof loc.lat === 'number' && typeof loc.lng === 'number') as Array<{ lat: number; lng: number }>
       setHeatPoints(pts)
       if (pts.length > 0) {
@@ -148,20 +148,24 @@ export default function PoliceOverview({ token, station }: Props) {
   return (
     <div className="panel">
       <div className="grid two" style={{ alignItems: 'stretch' }}>
-        <div className="card">
-          <div className="label">FIR vs Non-FIR</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 12, alignItems: 'center' }}>
-            <Doughnut data={firData} options={{ plugins: { legend: { position: 'bottom' } } }} />
-            <div style={{ display: 'grid', gap: 8 }}>
-              <div className="stat">
-                <div className="value" style={{ color: '#ef4444' }}>{firData.datasets[0].data[0] || 0}</div>
-                <div className="muted">FIR</div>
-              </div>
-              <div className="stat">
-                <div className="value" style={{ color: '#3b82f6' }}>{firData.datasets[0].data[1] || 0}</div>
-                <div className="muted">Non-FIR</div>
-              </div>
-            </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg,#1f2937 0%,#111827 100%)', border: '1px solid #374151' }}>
+          <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ef4444', display: 'inline-block' }}></span>
+            FIR
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: '#ef4444' }}>{firCount}</div>
+            <div className="muted">cases</div>
+          </div>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg,#1f2937 0%,#0b3a2a 100%)', border: '1px solid #1e3a2f' }}>
+          <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#10b981', display: 'inline-block' }}></span>
+            Non-FIR
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: '#10b981' }}>{nonFirCount}</div>
+            <div className="muted">cases</div>
           </div>
         </div>
         <div className="card">
