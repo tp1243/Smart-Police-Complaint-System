@@ -254,36 +254,30 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
   return (
     <>
       <div>
-        <div className="panel desktop-only" style={{ marginBottom: 10 }}>
-          {/* Desktop toolbar */}
-          <div className="table-toolbar desktop-only">
-            <FiSearch />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title, ID, or description" />
-          </div>
-          <div className="filters desktop-only">
-            <span className={`pill ${statusFilter === '' ? 'active' : ''}`} onClick={() => setStatusFilter('')}>All</span>
-            <span className={`pill ${statusFilter === 'Pending' ? 'active' : ''}`} onClick={() => setStatusFilter('Pending')}>Pending</span>
-            <span className={`pill ${statusFilter === 'Under Review' ? 'active' : ''}`} onClick={() => setStatusFilter('Under Review')}>Under Review</span>
-            <span className={`pill ${statusFilter === 'In Progress' ? 'active' : ''}`} onClick={() => setStatusFilter('In Progress')}>In Progress</span>
-            <span className={`pill ${statusFilter === 'Solved' ? 'active' : ''}`} onClick={() => setStatusFilter('Solved')}>Solved</span>
-            <div className="sort">
-              <FiFilter />
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="sort-select">
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        {/* Mobile-only professional search bar without background card */}
-        <div className="mobile-only" style={{ marginBottom: 10 }}>
-          <div className="mobile-searchbar">
+        <div className="panel" style={{ marginBottom: 10 }}>
+          <div className="table-toolbar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, justifyContent: 'space-between' }}>
             <div className="search modern">
               <FiSearch />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search complaints by ID, crime, or station" />
               {q && (
                 <button className="clear-btn" onClick={() => setQ('')}>Clear</button>
               )}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+              <div className="filters">
+                <span className={`pill ${statusFilter === '' ? 'active' : ''}`} onClick={() => setStatusFilter('')}>All</span>
+                <span className={`pill ${statusFilter === 'Pending' ? 'active' : ''}`} onClick={() => setStatusFilter('Pending')}>Pending</span>
+                <span className={`pill ${statusFilter === 'Under Review' ? 'active' : ''}`} onClick={() => setStatusFilter('Under Review')}>Under Review</span>
+                <span className={`pill ${statusFilter === 'In Progress' ? 'active' : ''}`} onClick={() => setStatusFilter('In Progress')}>In Progress</span>
+                <span className={`pill ${statusFilter === 'Solved' ? 'active' : ''}`} onClick={() => setStatusFilter('Solved')}>Solved</span>
+              </div>
+              <div className="sort">
+                <FiFilter />
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="sort-select">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
