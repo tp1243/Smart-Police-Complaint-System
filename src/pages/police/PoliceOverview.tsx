@@ -148,24 +148,26 @@ export default function PoliceOverview({ token, station }: Props) {
   return (
     <div className="panel">
       <div className="grid two" style={{ alignItems: 'stretch' }}>
-        <div className="card" style={{ background: 'linear-gradient(135deg,#1f2937 0%,#111827 100%)', border: '1px solid #374151' }}>
-          <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ef4444', display: 'inline-block' }}></span>
-            FIR
+        <div style={{ display: 'grid', gridTemplateRows: '1fr 1fr', gap: 12 }}>
+          <div className="card" style={{ background: 'linear-gradient(135deg,#1f2937 0%,#111827 100%)', border: '1px solid #374151', minHeight: 100 }}>
+            <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 999, background: '#ef4444', display: 'inline-block' }}></span>
+              FIR
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#ef4444' }}>{firCount}</div>
+              <div className="muted">cases</div>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <div style={{ fontSize: 36, fontWeight: 700, color: '#ef4444' }}>{firCount}</div>
-            <div className="muted">cases</div>
-          </div>
-        </div>
-        <div className="card" style={{ background: 'linear-gradient(135deg,#1f2937 0%,#0b3a2a 100%)', border: '1px solid #1e3a2f' }}>
-          <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#10b981', display: 'inline-block' }}></span>
-            Non-FIR
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <div style={{ fontSize: 36, fontWeight: 700, color: '#10b981' }}>{nonFirCount}</div>
-            <div className="muted">cases</div>
+          <div className="card" style={{ background: 'linear-gradient(135deg,#1f2937 0%,#0b3a2a 100%)', border: '1px solid #1e3a2f', minHeight: 100 }}>
+            <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 999, background: '#10b981', display: 'inline-block' }}></span>
+              Non-FIR
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: '#10b981' }}>{nonFirCount}</div>
+              <div className="muted">cases</div>
+            </div>
           </div>
         </div>
         <div className="card">
