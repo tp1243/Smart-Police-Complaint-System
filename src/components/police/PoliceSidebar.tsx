@@ -1,4 +1,4 @@
-import { FiHome, FiList, FiClock, FiCheckCircle, FiSettings, FiLogOut, FiBell } from 'react-icons/fi'
+import { FiHome, FiList, FiClock, FiCheckCircle, FiSettings, FiLogOut, FiBell, FiAlertCircle, FiTag } from 'react-icons/fi'
 // import { useState } from 'react'
 
 type Props = {
@@ -11,6 +11,8 @@ const items = [
   { key: 'overview', label: 'Dashboard Overview', icon: FiHome },
   { key: 'active', label: 'Active Complaints', icon: FiClock },
   { key: 'pending', label: 'Pending Complaints', icon: FiList },
+  { key: 'fir', label: 'FIR Complaints', icon: FiAlertCircle },
+  { key: 'non-fir', label: 'Non-FIR Complaints', icon: FiTag },
   { key: 'completed', label: 'Completed Cases', icon: FiCheckCircle },
   { key: 'notifications', label: 'Notifications / Updates', icon: FiBell },
   { key: 'settings', label: 'Settings & Profile', icon: FiSettings },

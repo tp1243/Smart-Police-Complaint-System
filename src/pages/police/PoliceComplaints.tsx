@@ -4,12 +4,13 @@ import type { ComplaintStatus } from '../../types'
 import { policeApi } from '../../services/police'
 import { useNotificationSound } from '../../components/useNotificationSound'
 
-type Props = { token: string; filter?: 'active' | 'pending' | 'completed'; officer?: { id?: string; username: string; station?: string } }
+type Props = { token: string; filter?: 'active' | 'pending' | 'completed'; categoryFilter?: 'fir' | 'non-fir'; officer?: { id?: string; username: string; station?: string } }
 
 type ComplaintRow = {
   _id?: string
   title: string
   type: string
+  category?: string
   status?: ComplaintStatus
   createdAt?: string
   location?: { lat?: number; lng?: number; address?: string }
@@ -17,7 +18,7 @@ type ComplaintRow = {
   photoUrl?: string
 }
 
-export default function PoliceComplaints({ token, filter, officer }: Props) {
+export default function PoliceComplaints({ token, filter, categoryFilter, officer }: Props) {
   const [items, setItems] = useState<ComplaintRow[]>([])
   const [q, setQ] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +55,10 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
     policeApi.listComplaints(token, { status: statusParam || undefined, fields: 'summary', limit: 100 }).then((res) => {
       if (!active) return
       let rows = res.complaints
+      if (categoryFilter) {
+        const want = categoryFilter.toLowerCase()
+        rows = rows.filter((c: any) => String(c.category || '').trim().toLowerCase() === want)
+      }
       setItems(rows)
       setLoading(false)
       try {
@@ -62,7 +67,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
       } catch {}
     }).catch(() => { setLoading(false) })
     return () => { active = false }
-  }, [token, filter])
+  }, [token, filter, categoryFilter])
 
   // Poll for new complaints and play a notification when new IDs appear
   useEffect(() => {
@@ -71,6 +76,10 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
         const statusParam = filter === 'active' ? 'active' : filter === 'pending' ? 'pending' : filter === 'completed' ? 'completed' : ''
         const res = await policeApi.listComplaints(token, { status: statusParam || undefined, fields: 'summary', limit: 100 })
         let rows = res.complaints
+        if (categoryFilter) {
+          const want = categoryFilter.toLowerCase()
+          rows = rows.filter((c: any) => String(c.category || '').trim().toLowerCase() === want)
+        }
         const oldIds = new Set(itemsRef.current.map(c => c._id))
         const newIds = new Set(rows.map((c: any) => c._id))
         let hasNew = false
@@ -84,7 +93,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
       }
     }, 30000)
     return () => clearInterval(id)
-  }, [token, filter, notify])
+  }, [token, filter, categoryFilter, notify])
 
   const statuses: ComplaintStatus[] = ['Pending', 'Under Review', 'In Progress', 'Solved']
   const types = useMemo(() => {
@@ -96,6 +105,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
   const filtered = useMemo(() => {
     const norm = q.trim().toLowerCase()
     const f = items.filter(c =>
+      (!categoryFilter || String(c.category || '').trim().toLowerCase() === categoryFilter) &&
       (!statusFilter || c.status === statusFilter) &&
       (!typeFilter || c.type === typeFilter) &&
       (

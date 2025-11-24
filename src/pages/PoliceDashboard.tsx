@@ -45,6 +45,10 @@ export default function PoliceDashboard() {
       case 'pending':
       case 'completed':
         return <Suspense fallback={<div />}> <PoliceComplaints token={token} filter={section} officer={officer || undefined} /> </Suspense>
+      case 'fir':
+        return <Suspense fallback={<div />}> <PoliceComplaints token={token} categoryFilter="fir" officer={officer || undefined} /> </Suspense>
+      case 'non-fir':
+        return <Suspense fallback={<div />}> <PoliceComplaints token={token} categoryFilter="non-fir" officer={officer || undefined} /> </Suspense>
       case 'map':
         return <Suspense fallback={<div />}> <PoliceMap token={token} /> </Suspense>
       case 'analytics':
