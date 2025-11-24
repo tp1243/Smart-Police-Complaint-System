@@ -59,7 +59,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
         const cacheKey = `policeComplaintsCache:${statusParam || 'all'}`
         localStorage.setItem(cacheKey, JSON.stringify(rows))
       } catch {}
-    }).catch((err) => { setError(err.message || 'Failed to load complaints'); setLoading(false) })
+    }).catch(() => { setLoading(false) })
     return () => { active = false }
   }, [token, filter])
 

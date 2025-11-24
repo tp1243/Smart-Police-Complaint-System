@@ -56,7 +56,7 @@ export async function request<T>(path: string, options: RequestInit): Promise<T>
     const bodyStr = typeof finalOptions.body === 'string' ? finalOptions.body : ''
     if (bodyStr && bodyStr.length > 60000) keepalive = false
   } catch {}
-  const timeoutMs = String(finalOptions.method || 'GET').toUpperCase() === 'GET' ? 8000 : 12000
+  const timeoutMs = String(finalOptions.method || 'GET').toUpperCase() === 'GET' ? 15000 : 20000
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {

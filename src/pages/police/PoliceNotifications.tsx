@@ -18,12 +18,21 @@ export default function PoliceNotifications({ token }: Props) {
 
   useEffect(() => {
     let active = true
+    const socket = connectRealtime('police', token)
+    socket.on('police:new_complaint', (payload: { message: string; complaintId?: string; createdAt?: string }) => {
+      setNotifications((prev) => [
+        { _id: String(Date.now()), message: payload.message, read: false, createdAt: payload.createdAt || new Date().toISOString(), complaintId: payload.complaintId || undefined, station: '' },
+        ...prev,
+      ])
+      sound.play()
+    })
     ;(async () => {
       try {
         const res = await policeApi.listNotifications(token)
         if (active) setNotifications(res.notifications)
+        try { socket.connect() } catch {}
       } catch (err: any) {
-        if (active) setError(err.message || 'Failed to load notifications')
+        
       } finally {
         if (active) setLoading(false)
       }
@@ -31,21 +40,6 @@ export default function PoliceNotifications({ token }: Props) {
     const id = setInterval(() => {
       policeApi.listNotifications(token).then((res) => setNotifications(res.notifications)).catch(() => {})
     }, 10000)
-    const socket = connectRealtime('police', token)
-    socket.on('police:new_complaint', (payload: { message: string; complaintId?: string; createdAt?: string }) => {
-      setNotifications((prev) => [
-        {
-          _id: String(Date.now()),
-          message: payload.message,
-          read: false,
-          createdAt: payload.createdAt || new Date().toISOString(),
-          complaintId: payload.complaintId || undefined,
-          station: '',
-        },
-        ...prev,
-      ])
-      sound.play()
-    })
     return () => { active = false; clearInterval(id); socket.disconnect() }
   }, [token, sound])
 

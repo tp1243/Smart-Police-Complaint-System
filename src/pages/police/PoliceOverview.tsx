@@ -9,7 +9,7 @@ type Props = { token: string; station?: string }
 
 export default function PoliceOverview({ token, station }: Props) {
   const [stats, setStats] = useState<{ totalComplaints: number; casesSolved: number; complaintsPending: number; activeOfficers: number } | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  
   const [barData, setBarData] = useState<any>({ labels: ['Pending','In Progress','Solved'], datasets: [{ label: 'Complaints', backgroundColor: '#38bdf8', data: [0,0,0] }] })
   const [lineData, setLineData] = useState<any>({ labels: [], datasets: [{ label: 'Trend', borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.2)', data: [] }] })
 
@@ -43,7 +43,7 @@ export default function PoliceOverview({ token, station }: Props) {
     }
     policeApi.listComplaints(token, { fields: 'summary', limit: 200 })
       .then((res) => { if (!active) return; compute(res.complaints || []) })
-      .catch((err) => setError(err.message || 'Failed to load stats'))
+      .catch(() => {})
     const id = setInterval(() => {
       policeApi.listComplaints(token, { fields: 'summary', limit: 200 }).then((res) => compute(res.complaints || [])).catch(() => {})
     }, 12000)
@@ -56,7 +56,7 @@ export default function PoliceOverview({ token, station }: Props) {
       <div className="grid two" style={{ alignItems: 'stretch' }}>
         <div className="card">
           <div className="label">Key Stats</div>
-          {error && <div className="form-error">{error}</div>}
+          
           <div className="stats-grid">
             <div className="stat">
               <div className="value">{stats?.totalComplaints ?? 0}</div>

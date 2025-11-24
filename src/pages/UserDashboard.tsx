@@ -1109,10 +1109,19 @@ function NotificationsPanel({ token }: { token: string }) {
 
   useEffect(() => {
     let active = true
+    const socket = connectRealtime('user', token)
+    socket.on('user:notification', (payload: { message: string; complaintId?: string; type?: string; createdAt?: string }) => {
+      setNotifications((prev) => [
+        { _id: String(Date.now()), message: payload.message, type: payload.type || 'info', read: false, createdAt: payload.createdAt || new Date().toISOString(), complaintId: payload.complaintId || undefined },
+        ...prev,
+      ])
+      sound.play()
+    })
     ;(async () => {
       try {
         const res = await notificationsApi.list(token)
         if (active) setNotifications(res.notifications)
+        try { socket.connect() } catch {}
       } catch (err: any) {
         if (active) setError(err.message || 'Failed to load notifications')
       } finally {
@@ -1122,21 +1131,6 @@ function NotificationsPanel({ token }: { token: string }) {
     const id = setInterval(() => {
       notificationsApi.list(token).then((res) => setNotifications(res.notifications)).catch(() => {})
     }, 10000)
-    const socket = connectRealtime('user', token)
-    socket.on('user:notification', (payload: { message: string; complaintId?: string; type?: string; createdAt?: string }) => {
-      setNotifications((prev) => [
-        {
-          _id: String(Date.now()),
-          message: payload.message,
-          type: payload.type || 'info',
-          read: false,
-          createdAt: payload.createdAt || new Date().toISOString(),
-          complaintId: payload.complaintId || undefined,
-        },
-        ...prev,
-      ])
-      sound.play()
-    })
     return () => { active = false; clearInterval(id); socket.disconnect() }
   }, [token, sound])
 

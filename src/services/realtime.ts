@@ -2,6 +2,9 @@ import { io, Socket } from 'socket.io-client'
 
 function getSocketBaseUrl() {
   try {
+    if (typeof window !== 'undefined' && !import.meta.env.PROD) {
+      return window.location.origin
+    }
     const lsResolved = typeof window !== 'undefined' ? (localStorage.getItem('apiResolved') || localStorage.getItem('apiBaseOverride') || '') : ''
     const envBase = (import.meta.env.VITE_API_URL as string) || (import.meta.env.VITE_API_BASE_URL as string) || ''
     const raw = (lsResolved && lsResolved.trim()) ? lsResolved : envBase
@@ -23,9 +26,10 @@ export function connectRealtime(role: SocketRole, token: string): Socket {
   } catch {}
   const socket = io(base, {
     transports: ['websocket', 'polling'],
-    timeout: 5000,
+    timeout: 8000,
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 8,
+    autoConnect: false,
     path: '/socket.io',
     query: { role, token },
   })
