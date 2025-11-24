@@ -26,17 +26,23 @@ async function ping(url: string) {
 
 async function resolveApiBase(): Promise<string> {
   if (cachedApiBase) return cachedApiBase
-  const override = typeof window !== 'undefined' ? localStorage.getItem('apiBaseOverride') || '' : ''
   const envBase = apiBaseRaw || ''
+  if (envBase) {
+    cachedApiBase = normalizeBase(envBase)
+    if (typeof window !== 'undefined') localStorage.setItem('apiResolved', cachedApiBase)
+    return cachedApiBase
+  }
+  const override = typeof window !== 'undefined' ? localStorage.getItem('apiBaseOverride') || '' : ''
   const defaultRender = 'https://smart-police-complaint-system.onrender.com'
-  const sameOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-  const ordered = [override, envBase, sameOrigin, defaultRender]
-  const candidates = ordered.map(normalizeBase).filter(Boolean)
-  for (const c of candidates) {
+  const candidates: string[] = []
+  if (override) candidates.push(normalizeBase(override))
+  if (typeof window !== 'undefined' && import.meta.env.PROD) candidates.push(normalizeBase(window.location.origin))
+  candidates.push(normalizeBase(defaultRender))
+  for (const c of candidates.filter(Boolean)) {
     const ok = await ping(c)
     if (ok) { cachedApiBase = c; if (typeof window !== 'undefined') localStorage.setItem('apiResolved', c); return c }
   }
-  cachedApiBase = normalizeBase(envBase || defaultRender)
+  cachedApiBase = normalizeBase(defaultRender)
   if (typeof window !== 'undefined') localStorage.setItem('apiResolved', cachedApiBase)
   return cachedApiBase
 }
