@@ -9,7 +9,7 @@ import { complaintsApi } from '../services/complaints'
 import { api, supportApi,  type ProfileUser } from '../services/api'
 import { notificationsApi } from '../services/notifications'
 import { connectRealtime } from '../services/realtime'
-import { FiHelpCircle, FiMessageCircle, FiStar, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiCamera, FiVideo, FiMenu, FiMic } from 'react-icons/fi'
+import { FiHelpCircle, FiMessageCircle, FiStar, FiSearch, FiChevronDown, FiChevronUp, FiThumbsUp, FiThumbsDown, FiLink, FiSend, FiX, FiFilter, FiBell, FiCheck, FiRefreshCw, FiMenu, FiMic } from 'react-icons/fi'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Complaint, ComplaintStatus, NotificationItem } from '../types'
 import { useNotificationSound } from '../components/useNotificationSound'
@@ -449,6 +449,8 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     return () => { if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null } }
   }, [form])
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
   useEffect(() => {
     function onStorage(e: StorageEvent) {
       if (e.key === 'complaintDraft' && typeof e.newValue === 'string') {
@@ -501,79 +503,6 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     }
   }
 
-  // Camera capture state and helpers
-  const [cameraActive, setCameraActive] = useState(false)
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  // Stop camera on component unmount to release device
-  useEffect(() => {
-    return () => {
-      try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch {}
-      streamRef.current = null
-      if (videoRef.current) videoRef.current.srcObject = null
-    }
-  }, [])
-
-  async function getFirstVideoInputId() {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const cam = devices.find(d => d.kind === 'videoinput')
-      return cam?.deviceId || null
-    } catch {
-      return null
-    }
-  }
-
-  async function openCamera() {
-    setSubmitError('')
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera API not supported in this browser.')
-      }
-      // Stop any previous stream before starting a new one
-      try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch {}
-      streamRef.current = null
-
-      // Choose a specific camera if available to avoid ambiguous default
-      const firstId = await getFirstVideoInputId()
-      const constraints: MediaStreamConstraints = firstId
-        ? { video: { deviceId: { exact: firstId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
-        : { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
-
-      let stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-      streamRef.current = stream
-      setCameraActive(true)
-      if (videoRef.current) {
-        const v = videoRef.current
-        v.srcObject = stream
-        v.setAttribute('playsinline', 'true')
-        v.muted = true
-        // Wait until the video can play and a frame is available
-        await new Promise<void>((resolve) => {
-          const onPlaying = () => { v.removeEventListener('playing', onPlaying); resolve() }
-          v.addEventListener('playing', onPlaying)
-          setTimeout(() => resolve(), 800)
-        })
-        await v.play().catch(() => {})
-        // If dimensions are still 0, attempt a small delay to allow a frame
-        if (!v.videoWidth || !v.videoHeight) {
-          await new Promise(r => setTimeout(r, 300))
-        }
-      }
-
-    } catch (err: any) {
-      setSubmitError(err?.message ? String(err.message) : 'Camera permission denied or unavailable.')
-    }
-  }
-
-  function stopCamera() {
-    try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch {}
-    streamRef.current = null
-    if (videoRef.current) { try { videoRef.current.pause() } catch {}; videoRef.current.srcObject = null }
-    setCameraActive(false)
-  }
 
   function toggleVoice() {
     setSubmitError('')
@@ -610,87 +539,8 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   }
 
 
-  function estimateDataUrlSize(dataUrl: string) {
-    const b64 = dataUrl.split(',')[1] || ''
-    return Math.ceil((b64.length * 3) / 4)
-  }
+  
 
-  async function takePhoto() {
-    setSubmitError('')
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const stream = streamRef.current
-    if (!canvas || !stream) { setSubmitError('Camera not active. Open camera first.'); return }
-    const track = stream.getVideoTracks()[0]
-    const MAX_SIZE = 4 * 1024 * 1024 // 4MB
-
-    // Try ImageCapture first for better reliability
-    try {
-      // @ts-ignore - ImageCapture may not be typed in TS DOM lib
-      if (typeof ImageCapture !== 'undefined' && track) {
-        // @ts-ignore
-        const imageCapture = new ImageCapture(track)
-        let bitmap: ImageBitmap | null = null
-        try {
-          const blob: Blob = await imageCapture.takePhoto()
-          bitmap = await createImageBitmap(blob)
-        } catch {
-          // If takePhoto fails, try grabbing a frame
-          // @ts-ignore
-          bitmap = await imageCapture.grabFrame().catch(() => null)
-        }
-        if (!bitmap) throw new Error('No camera frame available')
-        const targetWidth = Math.min(bitmap.width || 1280, 1280)
-        const targetHeight = Math.round((bitmap.height || 720) * (targetWidth / (bitmap.width || 1280)))
-        canvas.width = targetWidth
-        canvas.height = targetHeight
-        const ctx = canvas.getContext('2d')
-        if (!ctx) throw new Error('Canvas unavailable')
-        ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight)
-        let quality = 0.8
-        let url = canvas.toDataURL('image/jpeg', quality)
-        while (estimateDataUrlSize(url) > MAX_SIZE && quality > 0.4) { quality -= 0.2; url = canvas.toDataURL('image/jpeg', quality) }
-        if (estimateDataUrlSize(url) > MAX_SIZE) { setSubmitError('Captured image too large. Try again.'); return }
-  // removed setCapturedDataUrl (unused)
-        setForm(prev => ({ ...prev, photoUrl: url }))
-        setFileName(`camera_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`)
-        return
-      }
-    } catch (err) {
-      // Fallback to canvas draw from <video>
-      console.warn('ImageCapture failed, falling back to video canvas:', err)
-    }
-
-    // Fallback: draw current video frame
-    if (!video) { setSubmitError('Camera preview not ready.'); return }
-    // Wait for a frame to be available
-    if (video.readyState < 2) {
-      await new Promise<void>((resolve) => {
-        const onCanPlay = () => { video.removeEventListener('canplay', onCanPlay); resolve() }
-        video.addEventListener('canplay', onCanPlay)
-        setTimeout(() => resolve(), 500)
-      })
-    }
-    const vw = video.videoWidth
-    const vh = video.videoHeight
-    if (!vw || !vh) { setSubmitError('No camera frame available. Try again.'); return }
-    const targetWidth = Math.min(vw, 1280)
-    const targetHeight = Math.round(vh * (targetWidth / vw))
-    canvas.width = targetWidth
-    canvas.height = targetHeight
-    const ctx = canvas.getContext('2d')
-    if (!ctx) { setSubmitError('Canvas unavailable'); return }
-    // Wait one animation frame to ensure the latest frame is rendered
-    await new Promise(requestAnimationFrame)
-    ctx.drawImage(video, 0, 0, targetWidth, targetHeight)
-    let quality = 0.8
-    let url = canvas.toDataURL('image/jpeg', quality)
-    while (estimateDataUrlSize(url) > MAX_SIZE && quality > 0.4) { quality -= 0.2; url = canvas.toDataURL('image/jpeg', quality) }
-    if (estimateDataUrlSize(url) > MAX_SIZE) { setSubmitError('Captured image too large. Try again.'); return }
-  // removed setCapturedDataUrl (unused)
-    setForm(prev => ({ ...prev, photoUrl: url }))
-    setFileName(`camera_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`)
-  }
 
   const [locating, setLocating] = useState(false);
   const [locStatus, setLocStatus] = useState<'idle' | 'searching' | 'accurate' | 'inaccurate' | 'denied' | 'timeout' | 'unavailable' | 'outdated'>('idle');
@@ -702,18 +552,6 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   const lastGoodStored = (() => { try { return JSON.parse(localStorage.getItem('lastGoodLoc') || 'null') } catch { return null } })();
   const lastGoodRef = useRef<{ lat: number; lng: number; timestamp: number } | null>(lastGoodStored);
 
-  // Rough bounds and landmarks to validate Ghansoli positions and avoid creek misplacement
-  const GHANSOLI_BOUNDS = { latMin: 19.08, latMax: 19.15, lngMin: 72.96, lngMax: 73.05 };
-  const CREEK_BOUNDS = { latMin: 19.07, latMax: 19.11, lngMin: 72.97, lngMax: 73.01 };
-  const GHANSOLI_LANDMARKS = [
-    { name: 'Ghansoli Railway Station', lat: 19.1039, lng: 73.0006 },
-    { name: 'Ghansoli Depot', lat: 19.1125, lng: 73.0030 },
-    { name: 'IKEA Navi Mumbai', lat: 19.1185, lng: 72.9960 },
-  ];
-
-  const isInsideBounds = (lat: number, lng: number, b: { latMin: number; latMax: number; lngMin: number; lngMax: number }) =>
-    lat >= b.latMin && lat <= b.latMax && lng >= b.lngMin && lng <= b.lngMax;
-
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const toRad = (v: number) => (v * Math.PI) / 180;
     const R = 6371000; // meters
@@ -722,16 +560,6 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
-  };
-
-  const nearestLandmark = (lat: number, lng: number) => {
-    let best = { name: '', lat: 0, lng: 0 } as { name: string; lat: number; lng: number };
-    let bestDist = Infinity;
-    for (const lm of GHANSOLI_LANDMARKS) {
-      const d = haversine(lat, lng, lm.lat, lm.lng);
-      if (d < bestDist) { bestDist = d; best = lm; }
-    }
-    return { landmark: best, distance: bestDist };
   };
 
   const computeSmoothed = () => {
@@ -750,12 +578,10 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   const applyPosition = (position: GeolocationPosition) => {
     const { latitude, longitude, accuracy } = position.coords;
     const timestamp = position.timestamp || Date.now();
-    // Simple outlier rejection to avoid big jumps into creek/water with poor accuracy
     if (samplesRef.current.length > 0) {
       const prev = samplesRef.current[samplesRef.current.length - 1];
       const jump = haversine(prev.lat, prev.lng, latitude, longitude);
       if (jump > 300 && (accuracy || 9999) > 50) {
-        // Ignore this sample as an outlier
         setCurrAccuracy(accuracy || null);
         setLastUpdate(timestamp);
         return;
@@ -765,30 +591,16 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     if (samplesRef.current.length > 20) samplesRef.current.shift();
     const smoothed = computeSmoothed();
     const next = smoothed || { lat: latitude, lng: longitude };
-
-    // Update form with smoothed coords only (address remains manual)
     setForm(prev => ({ ...prev, location: { ...(prev.location || {}), lat: next.lat, lng: next.lng } }));
     setCurrAccuracy(accuracy || null);
     setLastUpdate(timestamp);
-
-    // Validate against bounds and landmarks
-    const withinGhansoli = isInsideBounds(next.lat, next.lng, GHANSOLI_BOUNDS);
-    const nearLm = nearestLandmark(next.lat, next.lng);
     const isOutdated = Date.now() - timestamp > 60_000; // 1 minute considered outdated
     if (isOutdated) setLocStatus('outdated');
-    else if (accuracy && accuracy <= 10 && withinGhansoli) setLocStatus('accurate');
+    else if (accuracy && accuracy <= 10) setLocStatus('accurate');
     else setLocStatus('inaccurate');
+    setVisualLoc({ lat: next.lat, lng: next.lng });
 
-    // Visual correction to avoid creek misplacement when reading is inaccurate but near Ghansoli landmarks
-    const inCreek = isInsideBounds(next.lat, next.lng, CREEK_BOUNDS);
-    if (inCreek && nearLm.distance < 1500 && (accuracy || 9999) > 10) {
-      setVisualLoc({ lat: nearLm.landmark.lat, lng: nearLm.landmark.lng });
-    } else {
-      setVisualLoc({ lat: next.lat, lng: next.lng });
-    }
-
-    // Save last good location for future fallback
-    if ((accuracy || 9999) <= 25 && withinGhansoli) {
+    if ((accuracy || 9999) <= 25) {
       const lg = { lat: next.lat, lng: next.lng, timestamp };
       lastGoodRef.current = lg;
       try { localStorage.setItem('lastGoodLoc', JSON.stringify(lg)); } catch {}
@@ -801,7 +613,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
 
     const options = {
       enableHighAccuracy: true,
-      timeout: 30000, // 30 seconds high-accuracy attempt
+      timeout: 20000,
       maximumAge: 0,
     };
 
@@ -852,7 +664,6 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       options
     );
 
-    // Hard stop after 30 seconds; fallback to last good or network-based coarse location if needed
     setTimeout(() => {
       navigator.geolocation.clearWatch(watchId);
       if (bestPosition) {
@@ -860,7 +671,6 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
         setLocating(false);
         setLocStatus((bestPosition.coords.accuracy || 9999) <= 10 ? 'accurate' : 'inaccurate');
       } else {
-        // Try last good known location first
         if (lastGoodRef.current) {
           const { lat, lng, timestamp: ts } = lastGoodRef.current;
           setForm(prev => ({ ...prev, location: { ...(prev.location || {}), lat, lng } }));
@@ -877,7 +687,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
           );
         }
       }
-    }, 30000);
+    }, 20000);
   };
   
 
@@ -976,9 +786,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
             {currAccuracy != null && <span> · Accuracy ± {Math.round(currAccuracy)}m</span>}
             {lastUpdate != null && <span> · Updated {new Date(lastUpdate).toLocaleTimeString()}</span>}
           </div>
-          {locStatus === 'inaccurate' && (
-            <small className="muted">Reading may be affected by creek/indoor conditions. We apply smoothing and landmark verification</small>
-          )}
+          
         </div>
         {visualLoc && (
           <div>
@@ -998,26 +806,10 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       <div className="file-row">
         <label className="file">
           <span className="file-label">Upload Photo</span>
-          <input type="file" accept="image/*" capture="environment" onChange={handleFile} ref={fileInputRef} />
+          <input type="file" accept="image/*" onChange={handleFile} ref={fileInputRef} />
         </label>
         {fileName && <span className="file-name" title={fileName}>{fileName}</span>}
-        {/* Camera capture control beside upload */}
-        <div className="camera-control" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {!cameraActive ? (
-            <button type="button" className="btn sm ghost" onClick={openCamera} title="Open camera"><FiCamera /> Click Photo</button>
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              <div style={{ position: 'relative' }}>
-                <video ref={videoRef} autoPlay playsInline muted style={{ width: 240, height: 160, borderRadius: 8, background: '#000', border: '1px solid #24324a', objectFit: 'cover' }} />
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn sm" onClick={takePhoto}><FiCamera /> Capture</button>
-                <button type="button" className="btn sm ghost" onClick={stopCamera}><FiVideo /> Close</button>
-              </div>
-            </div>
-          )}
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
-        </div>
+        
         {form.photoUrl && (
           <div className="preview-thumb-wrap">
             <img src={form.photoUrl} alt="image preview" className="preview-thumb" />
@@ -1035,7 +827,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
             </button>
           </div>
         )}
-        {!cameraActive && submitError && (
+        {submitError && (
           <span className="form-error" role="alert" style={{ marginLeft: 8 }}>{submitError}</span>
         )}
       </div>
