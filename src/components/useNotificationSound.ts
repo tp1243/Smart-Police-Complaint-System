@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import dingUrl from '../assets/Iphone SMS (Ting).mp3'
+const dingUrl = new URL('../assets/Iphone SMS (Ting).mp3', import.meta.url).href
 
 type Options = {
   volume?: number
@@ -16,7 +16,9 @@ export function useNotificationSound(options?: Options) {
   const volume = options?.volume ?? 0.8
 
   useEffect(() => {
-    const a = new Audio(dingUrl)
+    const a = new Audio()
+    a.src = dingUrl
+    a.preload = 'auto'
     a.volume = volume
     audioRef.current = a
     return () => {
@@ -35,9 +37,15 @@ export function useNotificationSound(options?: Options) {
     if (a) {
       try {
         a.currentTime = 0
-        void a.play()
+        const p = a.play()
+        if (p && typeof p.then === 'function') {
+          p.catch(() => {
+            try { a.pause() } catch {}
+            beep()
+          })
+        }
       } catch {
-        // silently ignore if playback is blocked by browser policy
+        beep()
       }
     }
   }
@@ -67,6 +75,24 @@ export function useNotificationSound(options?: Options) {
   }
 
   function setEnabled(v: boolean) { enabledRef.current = v }
+
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = 'sine'
+      o.frequency.value = 880
+      g.gain.value = 0.0001 + (volume * 0.1)
+      o.connect(g)
+      g.connect(ctx.destination)
+      const now = ctx.currentTime
+      o.start(now)
+      g.gain.exponentialRampToValueAtTime(0.00001, now + 0.18)
+      o.stop(now + 0.2)
+      setTimeout(() => { try { ctx.close() } catch {} }, 400)
+    } catch {}
+  }
 
   return { play, setEnabled, prime }
 }
