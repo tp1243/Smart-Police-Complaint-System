@@ -25,7 +25,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | ''>('')
   const [typeFilter, setTypeFilter] = useState<string>('')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest')
-  const notify = useNotificationSound({ volume: 0.85, cooldownMs: 3000 })
+  const notify = useNotificationSound({ volume: 0.85, cooldownMs: 0 })
   const firstPoll = useRef(true)
   const itemsRef = useRef<ComplaintRow[]>([])
   useEffect(() => { itemsRef.current = items }, [items])
@@ -40,6 +40,7 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
       window.removeEventListener('spcs:disable-sound', onDisable)
     }
   }, [notify])
+  useEffect(() => { try { notify.setEnabled(true); notify.prime() } catch {} }, [notify])
 
   useEffect(() => {
     let active = true
@@ -126,6 +127,25 @@ export default function PoliceComplaints({ token, filter, officer }: Props) {
     try {
       const res = await policeApi.updateComplaintStatus(token, id, status)
       setItems(prev => prev.map(it => it._id === id ? { ...it, status: res.complaint.status } : it))
+      try { window.dispatchEvent(new CustomEvent('spcs:complaint-status-updated', { detail: { id, status: res.complaint.status } })) } catch {}
+      try {
+        const mapBucket = (s: ComplaintStatus) => s === 'Solved' ? 'completed' : (s === 'In Progress' ? 'active' : 'pending')
+        const buckets = ['all','active','pending','completed']
+        for (const b of buckets) {
+          const key = `policeComplaintsCache:${b}`
+          const arr = JSON.parse(localStorage.getItem(key) || '[]')
+          if (Array.isArray(arr) && arr.length) {
+            const idx = arr.findIndex((c: any) => String(c._id) === String(id))
+            if (idx >= 0) {
+              const updated = { ...arr[idx], status: res.complaint.status }
+              const newArr = arr.slice()
+              newArr.splice(idx, 1)
+              if (b === 'all' || mapBucket((res.complaint.status || 'Pending') as ComplaintStatus) === b) newArr.unshift(updated)
+              localStorage.setItem(key, JSON.stringify(newArr))
+            }
+          }
+        }
+      } catch {}
     } catch (err: any) {
       setError(err.message || 'Update failed')
     }

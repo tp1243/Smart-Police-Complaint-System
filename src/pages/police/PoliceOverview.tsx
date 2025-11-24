@@ -47,7 +47,11 @@ export default function PoliceOverview({ token, station }: Props) {
     const id = setInterval(() => {
       policeApi.listComplaints(token, { fields: 'summary', limit: 200 }).then((res) => compute(res.complaints || [])).catch(() => {})
     }, 12000)
-    return () => { active = false; clearInterval(id) }
+    const onStatus = () => {
+      policeApi.listComplaints(token, { fields: 'summary', limit: 200 }).then((res) => compute(res.complaints || [])).catch(() => {})
+    }
+    window.addEventListener('spcs:complaint-status-updated', onStatus)
+    return () => { active = false; clearInterval(id); window.removeEventListener('spcs:complaint-status-updated', onStatus) }
   }, [token, station])
 
 

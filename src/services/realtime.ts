@@ -29,7 +29,7 @@ export function connectRealtime(role: SocketRole, token: string): Socket {
     timeout: 8000,
     reconnection: true,
     reconnectionAttempts: 8,
-    autoConnect: false,
+    autoConnect: true,
     path: '/socket.io',
     query: { role, token },
   })

@@ -14,10 +14,11 @@ export default function PoliceNotifications({ token }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [q, setQ] = useState<string>('')
-  const sound = useNotificationSound({ volume: 0.85, cooldownMs: 2500 })
+  const sound = useNotificationSound({ volume: 0.85, cooldownMs: 0 })
 
   useEffect(() => {
     let active = true
+    try { sound.setEnabled(true); sound.prime() } catch {}
     const socket = connectRealtime('police', token)
     socket.on('police:new_complaint', (payload: { message: string; complaintId?: string; createdAt?: string }) => {
       setNotifications((prev) => [

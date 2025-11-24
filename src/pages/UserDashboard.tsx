@@ -24,7 +24,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshSignal, setRefreshSignal] = useState(0)
-  const notify = useNotificationSound({ volume: 0.85, cooldownMs: 3000 })
+  const notify = useNotificationSound({ volume: 0.85, cooldownMs: 0 })
   const firstPoll = useRef(true)
   const statusMapRef = useRef<Record<string, string>>({})
 
@@ -38,6 +38,8 @@ export default function UserDashboard() {
       window.removeEventListener('spcs:disable-sound', onDisable)
     }
   }, [notify])
+
+  useEffect(() => { try { notify.setEnabled(true); notify.prime() } catch {} }, [notify])
 
   const token = localStorage.getItem('token') || ''
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || 'null') } catch { return null } })()
@@ -551,6 +553,10 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
   // Persist last good location to improve reliability when GPS is flaky
   const lastGoodStored = (() => { try { return JSON.parse(localStorage.getItem('lastGoodLoc') || 'null') } catch { return null } })();
   const lastGoodRef = useRef<{ lat: number; lng: number; timestamp: number } | null>(lastGoodStored);
+  const revGeoTimerRef = useRef<number | null>(null);
+  const lastRevGeoRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [addressManual, setAddressManual] = useState(false)
+  const lastAutoAddressRef = useRef<string>('')
 
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const toRad = (v: number) => (v * Math.PI) / 180;
@@ -561,6 +567,108 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
+
+  function formatAddress(json: any) {
+    const a = json?.address || {}
+    const poi = json?.name || a.public_building || a.building || a.amenity || a.shop || ''
+    const houseNo = a.house_number || a.block || ''
+    const road = a.road || a.residential || a.pedestrian || a.footway || a.cycleway || a.path || ''
+    const neighbourhood = a.neighbourhood || a.suburb || a.quarter || a.hamlet || a.estate || ''
+    const city = a.city || a.town || a.village || a.city_district || a.county || ''
+    const state = a.state || ''
+    const postcode = a.postcode || ''
+    const street = [houseNo, road].filter(Boolean).join(' ')
+    const parts = [poi, street, neighbourhood].filter(Boolean).join(', ')
+    const place = [city].filter(Boolean).join('')
+    const tail = [state, postcode].filter(Boolean).join(' ')
+    const display = [parts, place].filter(Boolean).join(', ')
+    const full = [display, tail].filter(Boolean).join(', ')
+    return full || json?.display_name || ''
+  }
+
+  async function reverseGeocode(lat: number, lng: number) {
+    let addr: string = ''
+    try {
+      const ctrl = new AbortController()
+      const t = setTimeout(() => ctrl.abort(), 12000)
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&namedetails=1&extratags=1`
+      const res = await fetch(url, { headers: { 'Accept-Language': navigator.language || 'en-IN' }, signal: ctrl.signal })
+      clearTimeout(t)
+      if (res.ok) {
+        const json = await res.json()
+        addr = formatAddress(json)
+      }
+    } catch {}
+    if (!addr) {
+      try {
+        const ctrl2 = new AbortController()
+        const t2 = setTimeout(() => ctrl2.abort(), 12000)
+        const url2 = `https://geocode.maps.co/reverse?lat=${lat}&lon=${lng}`
+        const res2 = await fetch(url2, { headers: { 'Accept-Language': navigator.language || 'en-IN' }, signal: ctrl2.signal })
+        clearTimeout(t2)
+        if (res2.ok) {
+          const json2 = await res2.json()
+          addr = formatAddress(json2)
+        }
+      } catch {}
+    }
+    const nearby = await buildNearbyString(lat, lng)
+    const coordFallback = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    const baseAddr = addr || coordFallback
+    const finalAddr = nearby ? `${baseAddr} • Nearby: ${nearby}` : baseAddr
+    const isAddressBlank = !((form.location?.address || '').trim())
+    if (finalAddr && finalAddr !== lastAutoAddressRef.current) {
+      lastAutoAddressRef.current = finalAddr
+      if (!addressManual || isAddressBlank) {
+        setForm(prev => ({ ...prev, location: { ...(prev.location || {}), address: finalAddr } }))
+      }
+    }
+  }
+
+  function scheduleReverseGeocode(lat: number, lng: number) {
+    const last = lastRevGeoRef.current;
+    if (last && haversine(last.lat, last.lng, lat, lng) < 10) return;
+    lastRevGeoRef.current = { lat, lng };
+    if (revGeoTimerRef.current) { clearTimeout(revGeoTimerRef.current); revGeoTimerRef.current = null; }
+    revGeoTimerRef.current = window.setTimeout(() => { reverseGeocode(lat, lng); }, 250);
+  }
+
+  async function buildNearbyString(lat: number, lng: number) {
+    let elements: any[] = []
+    try {
+      const ctrl = new AbortController()
+      const t = setTimeout(() => ctrl.abort(), 12000)
+      const q = `[out:json][timeout:10];(node(around:450,${lat},${lng})["shop"];node(around:450,${lat},${lng})["amenity"="college"];node(around:450,${lat},${lng})["amenity"="university"];node(around:450,${lat},${lng})["amenity"="place_of_worship"];);out body;`
+      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`
+      const res = await fetch(url, { signal: ctrl.signal })
+      clearTimeout(t)
+      if (res.ok) {
+        const json = await res.json()
+        elements = Array.isArray(json?.elements) ? json.elements : []
+      }
+    } catch {}
+    if (!elements.length) return ''
+    let bestShop: any = null, bestShopD = Infinity
+    let bestCollege: any = null, bestCollegeD = Infinity
+    let bestTemple: any = null, bestTempleD = Infinity
+    for (const el of elements) {
+      const name = el?.tags?.name || ''
+      const eLat = typeof el.lat === 'number' ? el.lat : (el?.center?.lat || null)
+      const eLon = typeof el.lon === 'number' ? el.lon : (el?.center?.lon || null)
+      if (name && typeof eLat === 'number' && typeof eLon === 'number') {
+        const d = haversine(lat, lng, eLat, eLon)
+        if (el?.tags?.shop && d < bestShopD) { bestShop = { name }; bestShopD = d }
+        if ((el?.tags?.amenity === 'college' || el?.tags?.amenity === 'university') && d < bestCollegeD) { bestCollege = { name }; bestCollegeD = d }
+        const isTemple = el?.tags?.amenity === 'place_of_worship' && ((el?.tags?.religion || '').toLowerCase() === 'hindu' || name.toLowerCase().includes('temple'))
+        if (isTemple && d < bestTempleD) { bestTemple = { name }; bestTempleD = d }
+      }
+    }
+    const parts: string[] = []
+    if (bestShop) parts.push(`${bestShop.name} (${Math.max(1, Math.round(bestShopD))}m)`)
+    if (bestCollege) parts.push(`${bestCollege.name} (${Math.max(1, Math.round(bestCollegeD))}m)`)
+    if (bestTemple) parts.push(`${bestTemple.name} (${Math.max(1, Math.round(bestTempleD))}m)`)
+    return parts.join(', ')
+  }
 
   const computeSmoothed = () => {
     const samples = samplesRef.current.slice(-5);
@@ -594,6 +702,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     setForm(prev => ({ ...prev, location: { ...(prev.location || {}), lat: next.lat, lng: next.lng } }));
     setCurrAccuracy(accuracy || null);
     setLastUpdate(timestamp);
+    scheduleReverseGeocode(next.lat, next.lng);
     const isOutdated = Date.now() - timestamp > 60_000; // 1 minute considered outdated
     if (isOutdated) setLocStatus('outdated');
     else if (accuracy && accuracy <= 10) setLocStatus('accurate');
@@ -678,6 +787,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
           setCurrAccuracy(null);
           setLocating(false);
           setLocStatus('inaccurate');
+          scheduleReverseGeocode(lat, lng);
         } else {
           setLocStatus('timeout');
           navigator.geolocation.getCurrentPosition(
@@ -766,7 +876,13 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       </div>
       <label>
         Location Address
-        <input value={form.location?.address || ''} onChange={e => setForm({ ...form, location: { ...(form.location || {}), address: e.target.value } })} />
+        <input
+          value={form.location?.address || ''}
+          onChange={e => {
+            setAddressManual(true)
+            setForm({ ...form, location: { ...(form.location || {}), address: e.target.value } })
+          }}
+        />
       </label>
       <div className="grid two">
         <label>
@@ -897,11 +1013,12 @@ function NotificationsPanel({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [q, setQ] = useState<string>('')
-  const sound = useNotificationSound({ volume: 0.85, cooldownMs: 2500 })
+  const sound = useNotificationSound({ volume: 0.85, cooldownMs: 0 })
 
   useEffect(() => {
     let active = true
     const socket = connectRealtime('user', token)
+    try { sound.setEnabled(true); sound.prime() } catch {}
     socket.on('user:notification', (payload: { message: string; complaintId?: string; type?: string; createdAt?: string }) => {
       setNotifications((prev) => [
         { _id: String(Date.now()), message: payload.message, type: payload.type || 'info', read: false, createdAt: payload.createdAt || new Date().toISOString(), complaintId: payload.complaintId || undefined },
