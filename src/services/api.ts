@@ -30,17 +30,14 @@ async function resolveApiBase(): Promise<string> {
   const envBase = apiBaseRaw || ''
   const defaultRender = 'https://smart-police-complaint-system.onrender.com'
   const sameOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-  const candidates = [defaultRender, override, envBase, sameOrigin].map(normalizeBase).filter(Boolean)
-  if (override && normalizeBase(override) === normalizeBase(defaultRender)) {
-    cachedApiBase = normalizeBase(defaultRender)
-    if (typeof window !== 'undefined') localStorage.setItem('apiResolved', cachedApiBase)
-    return cachedApiBase
-  }
+  const ordered = [override, envBase, sameOrigin, defaultRender]
+  const candidates = ordered.map(normalizeBase).filter(Boolean)
   for (const c of candidates) {
     const ok = await ping(c)
     if (ok) { cachedApiBase = c; if (typeof window !== 'undefined') localStorage.setItem('apiResolved', c); return c }
   }
-  cachedApiBase = normalizeBase(defaultRender)
+  cachedApiBase = normalizeBase(envBase || defaultRender)
+  if (typeof window !== 'undefined') localStorage.setItem('apiResolved', cachedApiBase)
   return cachedApiBase
 }
 

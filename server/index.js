@@ -1425,7 +1425,8 @@ const server = app.listen(PORT, () => {
 // Socket.IO setup for real-time notifications
 const io = new SocketIOServer(server, {
   cors: {
-    origin: '*',
+    origin: 'http://localhost:5173',
+    credentials: true,
     methods: ['GET', 'POST'],
   },
 })
