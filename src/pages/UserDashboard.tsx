@@ -67,6 +67,33 @@ export default function UserDashboard() {
     })()
   }, [token])
 
+  useEffect(() => {
+    if (!token) return
+    const socket = connectRealtime('user', token)
+    socket.on('user:notification', (payload: { type?: string; complaintId?: string; status?: ComplaintStatus; createdAt?: string }) => {
+      if (String(payload.type || '') === 'status_updated') {
+        const cid = String(payload.complaintId || '')
+        const st = (payload.status || 'Pending') as ComplaintStatus
+        setComplaints(prev => prev.map(c => String(c._id || '') === cid ? { ...c, status: st, updatedAt: payload.createdAt || c.updatedAt } : c))
+        const prevStatus = statusMapRef.current[cid]
+        statusMapRef.current[cid] = st
+        if (prevStatus && prevStatus !== st) notify.play()
+        complaintsApi.stats(token).then(r => setStats(r.stats)).catch(() => {})
+      }
+    })
+    socket.on('user:complaint_status', (payload: { id?: string; status?: ComplaintStatus; updatedAt?: string }) => {
+      const cid = String(payload.id || '')
+      const st = (payload.status || 'Pending') as ComplaintStatus
+      setComplaints(prev => prev.map(c => String(c._id || '') === cid ? { ...c, status: st, updatedAt: payload.updatedAt || c.updatedAt } : c))
+      const prevStatus = statusMapRef.current[cid]
+      statusMapRef.current[cid] = st
+      if (prevStatus && prevStatus !== st) notify.play()
+      complaintsApi.stats(token).then(r => setStats(r.stats)).catch(() => {})
+    })
+    try { socket.connect() } catch {}
+    return () => { try { socket.disconnect() } catch {} }
+  }, [token, notify])
+
   // Poll for status changes and play a notification when a complaint status updates
   useEffect(() => {
     const id = setInterval(async () => {
