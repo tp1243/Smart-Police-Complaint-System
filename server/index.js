@@ -9,8 +9,8 @@ import { Server as SocketIOServer } from 'socket.io'
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 import { Strategy as GitHubStrategy } from 'passport-github2'
-// Apple strategy is optional and more complex; we stub configuration when envs are present
 import AppleStrategy from 'passport-apple'
+import { initClassifier, classifyText } from './classifier.js'
 ////////////
 const app = express()
 app.use(cors({ origin: true }))
@@ -40,6 +40,8 @@ mongoose
   .connect(MONGO_URL)
   .then(() => console.log('MongoDB connected'))
   .catch((err) => { console.error('MongoDB connection error:', err); process.exit(1) })
+
+initClassifier().catch(() => {})
 
 // User schema
 const userSchema = new mongoose.Schema({
@@ -425,6 +427,8 @@ complaintSchema.index({ station: 1, createdAt: -1 })
 
 const Complaint = mongoose.model('Complaint', complaintSchema)
 
+initClassifier().catch(() => {})
+
 // Notification schema
 const notificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -444,6 +448,14 @@ const policeNotificationSchema = new mongoose.Schema({
   read: { type: Boolean, default: false },
 }, { timestamps: true })
 const PoliceNotification = mongoose.model('PoliceNotification', policeNotificationSchema)
+
+const classificationLogSchema = new mongoose.Schema({
+  complaintId: { type: mongoose.Schema.Types.ObjectId, ref: 'Complaint' },
+  predicted: { type: String, trim: true },
+  probFir: { type: Number },
+  probNonFir: { type: Number },
+}, { timestamps: true })
+const ClassificationLog = mongoose.model('ClassificationLog', classificationLogSchema)
 
 // Public aggregated system stats
 app.get('/api/stats', async (req, res) => {
@@ -471,7 +483,7 @@ app.get('/api/stats', async (req, res) => {
 // Create complaint
 app.post('/api/complaints', authMiddleware, async (req, res) => {
   try {
-    const { title, type, description, category, contact, photoUrl, location, station } = req.body
+    const { title, type, description, contact, photoUrl, location, station } = req.body
     if (!title || !type || !description) return res.status(400).json({ error: 'Title, type and description are required' })
 
     // Determine nearest station by geolocation when not provided
@@ -496,12 +508,23 @@ app.post('/api/complaints', authMiddleware, async (req, res) => {
       }
     }
 
+    let predictedCategory = 'non-fir'
+    let probFir = 0.5
+    let probNon = 0.5
+    try {
+      const resCls = classifyText(`${title} ${description}`)
+      predictedCategory = resCls.label
+      probFir = Number(resCls.probFir || 0)
+      probNon = Number(resCls.probNonFir || 0)
+      console.log('Classification', { label: predictedCategory, probFir, probNon })
+    } catch {}
+
     const complaint = await Complaint.create({
       userId: req.user.id,
       title,
       type,
       description,
-      category,
+      category: predictedCategory,
       contact,
       photoUrl,
       location,
@@ -549,6 +572,7 @@ app.post('/api/complaints', authMiddleware, async (req, res) => {
       })
     }
 
+    try { await ClassificationLog.create({ complaintId: complaint._id, predicted: predictedCategory, probFir, probNonFir: probNon }) } catch {}
     return res.status(201).json({ complaint })
   } catch (err) {
     console.error('Create complaint error:', err)

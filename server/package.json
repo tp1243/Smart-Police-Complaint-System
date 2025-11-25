@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "cross-env PORT=5175 nodemon index.js",
-    "build": "echo 'No build step required'"
+    "build": "echo 'No build step required'",
+    "test": "node classifier.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

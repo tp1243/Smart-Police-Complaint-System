@@ -844,7 +844,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       setOk('Complaint submitted successfully')
       localStorage.removeItem('complaintDraft')
       // Fully clear the form after successful submission
-      setForm({ title: '', type: '', description: '', contact: '', category: '', photoUrl: '', location: { address: '' } } as any)
+      setForm({ title: '', type: '', description: '', contact: '', photoUrl: '', location: { address: '' } } as any)
       setFileName('')
       setErrors({})
       setSubmitStage('finalize')
@@ -873,6 +873,8 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
             <option>Fraud</option>
             <option>Harassment</option>
             <option>Accident</option>
+            <option>Theft</option>
+            <option>murder</option>
           </select>
           {errors.type && <small className="muted" style={{ color: '#fecaca' }}>{errors.type}</small>}
         </label>
@@ -892,7 +894,6 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
         <label>Time<input type="time" value={(form as any).time || ''} onChange={e => setForm({ ...form, ...(form as any), time: e.target.value } as any)} /></label>
       </div>
       <div className="grid two">
-        <label>Category<input value={form.category || ''} onChange={e => setForm({ ...form, category: e.target.value })} /></label>
         <label>Contact<input value={form.contact || ''} onChange={e => setForm({ ...form, contact: e.target.value })} /></label>
       </div>
       <label>
