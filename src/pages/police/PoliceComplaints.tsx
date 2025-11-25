@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FiSearch } from 'react-icons/fi'
+import { FiSearch, FiX } from 'react-icons/fi'
 import type { ComplaintStatus } from '../../types'
 import { policeApi } from '../../services/police'
 import { useNotificationSound } from '../../components/useNotificationSound'
@@ -217,8 +217,9 @@ export default function PoliceComplaints({ token, filter, categoryFilter, office
               <div>{c.status ? <span className={`badge ${c.status.replace(/\s/g, '-').toLowerCase()}`}>{c.status}</span> : '-'}</div>
               <div>{c.assignedOfficerName || '-'}</div>
               <div style={{ display: 'flex', gap: 8 }}>
+                <DetailsModalButton item={c} token={token} />
                 <button className="btn sm ghost" onClick={() => assignToMe(c._id)} disabled={!officer || c.assignedOfficerName === officer?.username}>Assign to me</button>
-                <select value={c.status || 'Pending'} onChange={(e) => updateStatus(c._id, e.target.value as ComplaintStatus)} className="sort-select" style={{ paddingRight: 24 }}>
+                <select value={c.status || 'Pending'} onChange={(e) => updateStatus(c._id, e.target.value as ComplaintStatus)} className="sort-select" style={{ paddingRight: 24 }} disabled={(c.status || '') === 'Solved'}>
                   <option>Pending</option>
                   <option>Under Review</option>
                   <option>In Progress</option>
@@ -231,5 +232,50 @@ export default function PoliceComplaints({ token, filter, categoryFilter, office
         </div>
       )}
     </div>
+  )
+}
+
+function DetailsModalButton({ item, token }: { item: ComplaintRow; token: string }) {
+  const [open, setOpen] = useState(false)
+  const [details, setDetails] = useState<any>(item)
+  async function openModal() { setOpen(true); try { const res = await policeApi.getComplaintById(token, String(item._id || '')); setDetails(res.complaint) } catch {} }
+  return (
+    <>
+      <button className="btn sm" onClick={openModal}>View Details</button>
+      {open && (
+        <div className="modal">
+          <div className="modal-body">
+            <button className="icon-btn close" aria-label="Close" onClick={() => setOpen(false)}><FiX /></button>
+            <h3 style={{ marginBottom: 6 }}>{details.title}</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 10 }}>
+              <div><span className="muted">Type</span><div>{details.type || '-'}</div></div>
+              <div><span className="muted">Category</span><div>{(details.category || '-').toUpperCase()}</div></div>
+              <div><span className="muted">Status</span><div>{details.status ? <span className={`badge ${String(details.status).replace(/\s/g,'-').toLowerCase()}`}>{details.status}</span> : '-'}</div></div>
+              <div><span className="muted">Filed On</span><div>{details.createdAt ? new Date(details.createdAt).toLocaleString() : '-'}</div></div>
+            </div>
+            {details.photoUrl && <img src={details.photoUrl} alt="evidence" style={{ width: '100%', maxHeight: 280, objectFit: 'cover', borderRadius: 10, marginBottom: 10 }} />}
+            {details.location?.address && (
+              <div style={{ marginBottom: 10 }}>
+                <span className="muted">Location</span>
+                <div>{details.location.address}</div>
+              </div>
+            )}
+            {details.description?.trim() && (
+              <div className="modal-desc" style={{ marginBottom: 10 }}>
+                <span className="muted">Description</span>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{details.description}</div>
+              </div>
+            )}
+            <div style={{ marginBottom: 10 }}>
+              <span className="muted">Assigned Officer</span>
+              <div>{details.assignedOfficerName || details.assignedOfficer || '-'}</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn" onClick={() => setOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

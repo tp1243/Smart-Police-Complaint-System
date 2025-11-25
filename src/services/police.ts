@@ -17,6 +17,9 @@ export const policeApi = {
   async updateComplaintStatus(token: string, id: string, status: string) {
     return request<{ complaint: Complaint }>(`/police/complaints/${id}/status`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ status }) })
   },
+  async getComplaintById(token: string, id: string) {
+    return request<{ complaint: Complaint }>(`/police/complaints/${id}`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+  },
   async listAlerts(token: string) {
     return request<{ alerts: Array<{ _id: string; title: string; priority: 'high'|'medium'|'low'; createdAt: string; handled: boolean }> }>(`/police/alerts`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
   },

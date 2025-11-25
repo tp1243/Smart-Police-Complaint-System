@@ -828,6 +828,17 @@ app.get('/api/police/complaints', policeAuthMiddleware, async (req, res) => {
   }
 })
 
+app.get('/api/police/complaints/:id', policeAuthMiddleware, async (req, res) => {
+  try {
+    const c = await Complaint.findById(req.params.id).populate('userId', 'username email phone')
+    if (!c) return res.status(404).json({ error: 'Not found' })
+    return res.json({ complaint: c })
+  } catch (err) {
+    console.error('Police get complaint error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // Police assign complaint to themselves
 app.post('/api/police/complaints/:id/assign', policeAuthMiddleware, async (req, res) => {
   try {
@@ -884,13 +895,16 @@ app.put('/api/police/complaints/:id/status', policeAuthMiddleware, async (req, r
       return res.status(400).json({ error: 'Invalid status' })
     }
     
-    const complaint = await Complaint.findById(id)
-    if (!complaint) {
-      return res.status(404).json({ error: 'Complaint not found' })
-    }
-    
-    // Update complaint status
-    complaint.status = status
+  const complaint = await Complaint.findById(id)
+  if (!complaint) {
+    return res.status(404).json({ error: 'Complaint not found' })
+  }
+  if (String(complaint.status) === 'Solved' && String(status) !== 'Solved') {
+    return res.status(400).json({ error: 'Solved complaints cannot be updated to other statuses' })
+  }
+  
+  // Update complaint status
+  complaint.status = status
     complaint.lastUpdatedBy = officerId
     complaint.lastUpdatedAt = new Date()
     
