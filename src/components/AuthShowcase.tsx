@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { GiPoliceBadge } from 'react-icons/gi'
 import { FaLock, FaBell, FaChartLine, FaMobileAlt, FaUserShield } from 'react-icons/fa'
 import AuthVisual from './AuthVisual'
+import { Link } from 'react-router-dom'
 
 type Props = {
   title: string
@@ -25,7 +26,16 @@ export default function AuthShowcase({ title, subtitle, imageSrc, imageAlt }: Pr
 
       {imageSrc ? (
         <motion.div className="auth-illustration" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="back-pill"><Link to="/"><span>Back to website</span> <span aria-hidden>→</span></Link></div>
           <img src={imageSrc} alt={imageAlt || 'Smart policing illustration'} />
+          <div className="overlay">
+            <div className="tagline">Smart Policing, Trusted Service</div>
+            <div className="slide-indicator">
+              <span className="slide-dot" />
+              <span className="slide-dot" />
+              <span className="slide-dot active" />
+            </div>
+          </div>
         </motion.div>
       ) : (
         <AuthVisual title={title} subtitle={subtitle} />

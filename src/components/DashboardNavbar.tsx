@@ -22,7 +22,6 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('theme') || 'dark')
   const [lang, setLang] = useState<string>(() => localStorage.getItem('lang') || 'en')
-  const [soundOn, setSoundOn] = useState<boolean>(() => localStorage.getItem('sound') === 'on')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   useEffect(() => {
@@ -93,9 +92,7 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
           <option value="hi">HI</option>
           <option value="mr">MR</option>
         </select>
-        <button className="btn toggle" onClick={() => { const next = !soundOn; setSoundOn(next); localStorage.setItem('sound', next ? 'on' : 'off'); window.dispatchEvent(new Event(next ? 'spcs:enable-sound' : 'spcs:disable-sound')); }} title={soundOn ? 'Disable sound' : 'Enable sound'}>
-          <FiBell />
-        </button>
+        
         <div className="avatar" onClick={() => setOpenProfile(v => !v)}><FiUser /></div>
         <div className="bell" onClick={() => setOpenBell(v => !v)}>
           <FiBell />{unread > 0 && <span className="badge">{unread}</span>}

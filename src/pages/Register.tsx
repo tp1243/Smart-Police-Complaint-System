@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import AuthShowcase from '../components/AuthShowcase'
+import loginimg from '../assets/loginimg.png'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 import SocialAuth from '../components/SocialAuth'
 import AuthHeader from '../components/AuthHeader'
@@ -59,11 +60,12 @@ export default function Register() {
       <AuthHeader variant="register" />
       <div className="auth-layout user-auth">
       <div className="auth-left">
-        <AuthShowcase title="Create your account" subtitle="Join SPCS to submit and track complaints." />
+        <AuthShowcase title="Create your account" subtitle="Join SPCS to submit and track complaints." imageSrc={loginimg} imageAlt="Register illustration" />
       </div>
       <div className="auth-right">
         <motion.form className="auth-card auth-form" onSubmit={onSubmit} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h3>Create Account</h3>
+          <h3>Create an account</h3>
+          <div className="auth-subtext">Already have an account? <Link to="/login">Log in</Link></div>
           <div className="form-row">
             <input id="register-username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder=" " />
             <label htmlFor="register-username">Username</label>
@@ -86,6 +88,10 @@ export default function Register() {
             </div>
           </div>
           {error && <div className="form-error">{error}</div>}
+          <div className="tc-row">
+            <input id="tc" type="checkbox" defaultChecked />
+            <label htmlFor="tc">I agree to the <a href="#terms">Terms & Conditions</a></label>
+          </div>
           <div className="form-actions">
             <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Creating...' : 'Register'}</button>
             <Link className="btn ghost" to="/login">Already have an account</Link>

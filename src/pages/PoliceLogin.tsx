@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
 import AuthShowcase from '../components/AuthShowcase'
+import loginimg from '../assets/loginimg.png'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 import { NAVI_MUMBAI_POLICE_STATIONS } from '../data/policeStations'
 
@@ -38,13 +39,14 @@ export default function PoliceLogin() {
         <AuthShowcase
           title="Police Portal"
           subtitle="Sign in to view and manage complaints."
-          imageSrc="/ashoka-pillar.jpg"
-          imageAlt="Ashoka Pillar - Satyameva Jayate"
+          imageSrc={loginimg}
+          imageAlt="Police login illustration"
         />
       </div>
       <div className="auth-right">
         <motion.form className="auth-card auth-form" onSubmit={onSubmit} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <h3>Police Login</h3>
+          <div className="auth-subtext">New officer? <Link to="/police/register">Create an account</Link></div>
           <div className="form-row">
             <input id="police-login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder=" " />
             <label htmlFor="police-login-email">Email</label>
