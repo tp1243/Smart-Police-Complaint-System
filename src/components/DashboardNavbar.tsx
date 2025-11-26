@@ -5,6 +5,7 @@ import { notificationsApi } from '../services/notifications'
 import type { NotificationItem } from '../types'
 import { connectRealtime } from '../services/realtime'
 import NotificationToast from './NotificationToast'
+import { useI18n } from './i18n'
 
 type Props = {
   token: string
@@ -21,8 +22,8 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
   const [openBell, setOpenBell] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('theme') || 'dark')
-  const [lang, setLang] = useState<string>(() => localStorage.getItem('lang') || 'en')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+  const { lang, setLanguage, t } = useI18n()
 
   useEffect(() => {
     let active = true
@@ -61,7 +62,7 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
     if (theme === 'light') document.body.classList.add('light-theme'); else document.body.classList.remove('light-theme')
     localStorage.setItem('theme', theme)
   }, [theme])
-  useEffect(() => { localStorage.setItem('lang', lang) }, [lang])
+  useEffect(() => { try { localStorage.setItem('lang', lang) } catch {} }, [lang])
 
   const unread = notifications.filter(n => !n.read).length
 
@@ -76,18 +77,18 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
       <div className="dash-center">
         <div className="search">
           <FiSearch />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title, ID, status" />
-          <button className="btn sm" onClick={() => onSearch(q)}>Search</button>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search_placeholder')} />
+          <button className="btn sm" onClick={() => onSearch(q)}>{t('search_btn')}</button>
         </div>
       </div>
       <div className="dash-right">
-        <div className="welcome">Welcome, {username}!</div>
+        <div className="welcome">{t('welcome', { username })}</div>
         {/* Mobile-only compact username */}
         <div className="user-label" aria-label="Username">{username}</div>
         <button className="btn toggle" onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? <FiMoon /> : <FiSun />}
         </button>
-        <select value={lang} onChange={(e) => setLang(e.target.value)} className="btn toggle" style={{ background: 'transparent', color: 'var(--text)', borderColor: '#24324a' }}>
+        <select value={lang} onChange={(e) => setLanguage(e.target.value as any)} className="btn toggle" style={{ background: 'transparent', color: 'var(--text)', borderColor: '#24324a' }}>
           <option value="en">EN</option>
           <option value="hi">HI</option>
           <option value="mr">MR</option>
@@ -99,21 +100,21 @@ export default function DashboardNavbar({ token, username, onSearch, onLogout}: 
         </div>
         {openProfile && (
           <div className="dropdown">
-            <button onClick={() => setOpenProfile(false)}>View Profile</button>
-            <button onClick={() => setOpenProfile(false)}>Edit Profile</button>
-            <button onClick={() => setOpenProfile(false)}>Settings</button>
-            <button onClick={onLogout}>Logout</button>
+            <button onClick={() => setOpenProfile(false)}>{t('profile_view')}</button>
+            <button onClick={() => setOpenProfile(false)}>{t('profile_edit')}</button>
+            <button onClick={() => setOpenProfile(false)}>{t('settings')}</button>
+            <button onClick={onLogout}>{t('logout')}</button>
           </div>
         )}
         {openBell && (
           <div className="dropdown wide">
-            {notifications.length === 0 ? <div className="muted">No updates</div> : notifications.map(n => (
+            {notifications.length === 0 ? <div className="muted">{t('no_updates')}</div> : notifications.map(n => (
               <div key={n._id} className={`notif ${n.read ? '' : 'unread'}`}>
                 <div>{n.message}</div>
                 <small>{new Date(n.createdAt || '').toLocaleString()}</small>
               </div>
             ))}
-            <div className="actions"><button className="btn ghost" onClick={async () => { const r = await notificationsApi.markAllRead(token); setNotifications(r.notifications) }}>Clear All</button></div>
+            <div className="actions"><button className="btn ghost" onClick={async () => { const r = await notificationsApi.markAllRead(token); setNotifications(r.notifications) }}>{t('clear_all')}</button></div>
           </div>
         )}
         {toast && <NotificationToast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

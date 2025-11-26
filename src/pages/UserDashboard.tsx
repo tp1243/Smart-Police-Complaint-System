@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardNavbar from '../components/DashboardNavbar'
 import DashboardSidebar from '../components/DashboardSidebar'
@@ -13,6 +13,7 @@ import { FiHelpCircle, FiMessageCircle, FiStar, FiSearch, FiChevronDown, FiChevr
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Complaint, ComplaintStatus, NotificationItem } from '../types'
 import { useNotificationSound } from '../components/useNotificationSound'
+import { I18nProvider, useI18n } from '../components/i18n'
 import '../notifications.css'
 
 export default function UserDashboard() {
@@ -161,46 +162,53 @@ export default function UserDashboard() {
     } catch {}
   }
 
-  const content = useMemo(() => {
-    if (loading) return <div className="panel"><div className="muted">Loading dashboard…</div></div>
-    if (error) return <div className="panel error">{error}</div>
-
-  switch (section) {
+  let content: ReactNode
+  if (loading) {
+    content = <LoadingPanel />
+  } else if (error) {
+    content = <div className="panel error">{error}</div>
+  } else {
+    switch (section) {
       case 'overview':
-        return (<>
+        content = (<>
           <Overview stats={stats} complaints={complaints} />
-          <Suspense fallback={<div className="muted">Loading analytics…</div>}>
-            <Analytics token={token} refreshSignal={refreshSignal} />
-          </Suspense>
+          <AnalyticsSection token={token} refreshSignal={refreshSignal} />
         </>)
+        break
       case 'new':
-        return <ComplaintForm onSubmit={submitComplaint} />
+        content = <ComplaintForm onSubmit={submitComplaint} />
+        break
       case 'my':
-        return <ComplaintsTable items={complaints} />
+        content = <ComplaintsTable items={complaints} />
+        break
       case 'track':
-        return <MapView items={complaints} />
+        content = <MapView items={complaints} />
+        break
       case 'notifications':
-        return <NotificationsPanel token={token} />
+        content = <NotificationsPanel token={token} />
+        break
       case 'support':
-        return <SupportPanel token={token} profile={profile} />
+        content = <SupportPanel token={token} profile={profile} />
+        break
       case 'feedback':
-        return <SupportPanel token={token} profile={profile} defaultTab="feedback" />
+        content = <SupportPanel token={token} profile={profile} defaultTab="feedback" />
+        break
       case 'profile':
-        return <ProfileSettings />
+        content = <ProfileSettings />
+        break
       default:
-        return <Overview stats={stats} complaints={complaints} />
+        content = <Overview stats={stats} complaints={complaints} />
     }
-  }, [section, loading, error, stats, complaints, profile])
+  }
 
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   return (
+    <I18nProvider>
     <div className={`dashboard ${sidebarOpen ? 'sidebar-open' : ''}`}>
       <DashboardNavbar token={token} username={username} onSearch={handleSearch} onLogout={handleLogout} onToggleSidebar={() => setSidebarOpen(prev => !prev)} sidebarOpen={sidebarOpen} />
       {/* Mobile-only hamburger placed after navbar, aligned left */}
-      <button className="mobile-hamburger" aria-label={sidebarOpen ? 'Close menu' : 'Open menu'} onClick={() => setSidebarOpen(prev => !prev)}>
-        {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
-      </button>
+      <MobileHamburgerButton sidebarOpen={sidebarOpen} onClick={() => setSidebarOpen(prev => !prev)} />
       <div className="dash-body">
         <DashboardSidebar active={section} onChange={(key) => { setSection(key); setSidebarOpen(false); }} />
         {/* Mobile overlay to close sidebar when open */}
@@ -210,6 +218,30 @@ export default function UserDashboard() {
         </main>
       </div>
     </div>
+    </I18nProvider>
+  )
+}
+
+function LoadingPanel() {
+  const { t } = useI18n()
+  return <div className="panel"><div className="muted">{t('loading_dashboard')}</div></div>
+}
+
+function AnalyticsSection({ token, refreshSignal }: { token: string; refreshSignal?: number }) {
+  const { t } = useI18n()
+  return (
+    <Suspense fallback={<div className="muted">{t('loading_analytics')}</div>}>
+      <Analytics token={token} refreshSignal={refreshSignal} />
+    </Suspense>
+  )
+}
+
+function MobileHamburgerButton({ sidebarOpen, onClick }: { sidebarOpen: boolean; onClick: () => void }) {
+  const { t } = useI18n()
+  return (
+    <button className="mobile-hamburger" aria-label={sidebarOpen ? t('close_menu') : t('open_menu')} onClick={onClick}>
+      {sidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+    </button>
   )
 }
 
@@ -223,22 +255,24 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 function Overview({ stats, complaints }: { stats: Record<string, number>; complaints: Complaint[] }) {
+  const { t } = useI18n()
   return (
     <div>
       <div className="grid stats">
-        <StatCard label="Total Complaints Filed" value={complaints.length} />
-        <StatCard label="Complaints Solved" value={stats['Solved'] || 0} />
-        <StatCard label="Pending Complaints" value={stats['Pending'] || 0} />
-        <StatCard label="Under Review" value={stats['Under Review'] || 0} />
+        <StatCard label={t('overview_total')} value={complaints.length} />
+        <StatCard label={t('overview_solved')} value={stats['Solved'] || 0} />
+        <StatCard label={t('overview_pending')} value={stats['Pending'] || 0} />
+        <StatCard label={t('overview_review')} value={stats['Under Review'] || 0} />
       </div>
       <div className="panel">
-        <div className="muted">Quick actions: Use the sidebar to submit or track a complaint.</div>
+        <div className="muted">{t('overview_quick')}</div>
       </div>
     </div>
   )
 }
 
 function ComplaintsTable({ items }: { items: Complaint[] }) {
+  const { t } = useI18n()
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [q, setQ] = useState<string>('')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest')
@@ -250,7 +284,7 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
       const db = new Date(b.createdAt || 0).getTime()
       return sortBy === 'newest' ? db - da : da - db
     })
-  if (items.length === 0) return <div className="panel"><div className="muted">No complaints yet.</div></div>
+  if (items.length === 0) return <div className="panel"><div className="muted">{t('no_complaints_yet')}</div></div>
   return (
     <>
       <div>
@@ -258,9 +292,9 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
           <div className="table-toolbar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, justifyContent: 'space-between' }}>
             <div className="search modern">
               <FiSearch />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search complaints by ID, crime, or station" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('complaints_search_placeholder')} />
               {q && (
-                <button className="clear-btn" onClick={() => setQ('')}>Clear</button>
+                <button className="clear-btn" onClick={() => setQ('')}>{t('clear')}</button>
               )}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
@@ -282,8 +316,8 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
           </div>
         </div>
         <div className="table">
-          <div className="thead">
-            <div>ID</div><div>Title</div><div>Filed</div><div>Status</div><div>Station</div><div>Actions</div>
+            <div className="thead">
+            <div>{t('table_id')}</div><div>{t('table_title')}</div><div>{t('table_date')}</div><div>{t('table_status')}</div><div>{t('table_station')}</div><div>{t('table_actions')}</div>
           </div>
           {filtered.map((c) => {
             const distance = typeof c.nearestDistanceKm === 'number' ? `${c.nearestDistanceKm.toFixed(1)} km` : ''
@@ -302,7 +336,7 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
                 </div>
                 <div>{filed}</div>
                 <div><StatusBadge status={(c.status as ComplaintStatus) || 'Pending'} /></div>
-                <div title={station}>{station}</div>
+                <div title={station}>{station || t('unassigned')}</div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <DetailsModalButton complaint={c} />
                   <DownloadPdfButton complaint={c} />
@@ -324,7 +358,7 @@ function ComplaintsTable({ items }: { items: Complaint[] }) {
                 )}
                 <span className="id" title={c._id}>#{c._id?.slice(-6)}</span>
                 <span className="crime" title={c.type}>{c.type}</span>
-                <span className="station" title={c.station || 'Unassigned'}>{c.station || 'Unassigned'}</span>
+                <span className="station" title={c.station || t('unassigned')}>{c.station || t('unassigned')}</span>
               </div>
               {/* Row 2: View Details + Status */}
               <div className="row-actions">
@@ -344,6 +378,7 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
 }
 
 function DetailsModalButton({ complaint }: { complaint: Complaint }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   function renderDescription(text: string) {
     const lines = (text || '').split(/\r?\n/).filter(l => l.trim().length > 0)
@@ -370,23 +405,23 @@ function DetailsModalButton({ complaint }: { complaint: Complaint }) {
   }
   return (
     <>
-      <button className="btn sm" onClick={() => setOpen(true)}>View Details</button>
+      <button className="btn sm" onClick={() => setOpen(true)}>{t('view_details')}</button>
       {open && (
         <div className="modal">
           <div className="modal-body">
-            <button className="icon-btn close" aria-label="Close" onClick={() => setOpen(false)}><FiX /></button>
+            <button className="icon-btn close" aria-label={t('close')} onClick={() => setOpen(false)}><FiX /></button>
             <h3>{complaint.title}</h3>
-            <p><b>Type:</b> {complaint.type}</p>
+            <p><b>{t('type')}:</b> {complaint.type}</p>
             <div className="modal-desc">
-              <div className="modal-desc-title">Description</div>
-              {complaint.description?.trim() ? renderDescription(complaint.description) : <div className="muted">No description provided.</div>}
+              <div className="modal-desc-title">{t('description')}</div>
+              {complaint.description?.trim() ? renderDescription(complaint.description) : <div className="muted">{t('no_description')}</div>}
             </div>
             <Timeline status={(complaint.status as ComplaintStatus) || 'Pending'} />
             {complaint.photoUrl && <img src={complaint.photoUrl} alt="evidence" style={{ maxWidth: '100%', borderRadius: 8 }} />}
-            {complaint.location?.address && <p><b>Location:</b> {complaint.location.address}</p>}
-            <p><b>Routed Station:</b> {complaint.station || 'Unassigned'}{typeof complaint.nearestDistanceKm === 'number' ? ` (${complaint.nearestDistanceKm.toFixed(1)} km)` : ''}</p>
+            {complaint.location?.address && <p><b>{t('location')}:</b> {complaint.location.address}</p>}
+            <p><b>{t('routed_station')}:</b> {complaint.station || t('unassigned')}{typeof complaint.nearestDistanceKm === 'number' ? ` (${complaint.nearestDistanceKm.toFixed(1)} km)` : ''}</p>
             <div className="actions">
-              <button className="btn" onClick={() => setOpen(false)}>Close</button>
+              <button className="btn" onClick={() => setOpen(false)}>{t('close')}</button>
             </div>
           </div>
         </div>
@@ -408,6 +443,7 @@ function Timeline({ status }: { status: ComplaintStatus }) {
 }
 
 function DownloadPdfButton({ complaint }: { complaint: Complaint }) {
+  const { t } = useI18n()
   function download() {
     import('jspdf').then(({ default: jsPDF }) => {
       const doc = new jsPDF()
@@ -423,10 +459,11 @@ function DownloadPdfButton({ complaint }: { complaint: Complaint }) {
       doc.save(`complaint_${complaint._id || 'report'}.pdf`)
     })
   }
-  return <button className="btn sm" onClick={download}>Download PDF</button>
+  return <button className="btn sm" onClick={download}>{t('download_pdf')}</button>
 }
 
 function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise<void> }) {
+  const { t } = useI18n()
   const [form, setForm] = useState<Complaint>(() => {
     const d = localStorage.getItem('complaintDraft')
     if (d) {
@@ -861,26 +898,26 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       {submitError && <div className="form-error">{submitError}</div>}
       <div className="grid two">
         <label>
-          Title
+          {t('form_title')}
           <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
           {errors.title && <small className="muted" style={{ color: '#fecaca' }}>{errors.title}</small>}
         </label>
         <label>
-          Type
+          {t('form_type')}
           <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-            <option value="">Select…</option>
-            <option>Robbery</option>
-            <option>Fraud</option>
-            <option>Harassment</option>
-            <option>Accident</option>
-            <option>Theft</option>
-            <option>murder</option>
+            <option value="">{t('form_select')}</option>
+            <option value="Robbery">{t('crime_robbery')}</option>
+            <option value="Fraud">{t('crime_fraud')}</option>
+            <option value="Harassment">{t('crime_harassment')}</option>
+            <option value="Accident">{t('crime_accident')}</option>
+            <option value="Theft">{t('crime_theft')}</option>
+            <option value="murder">{t('crime_murder')}</option>
           </select>
           {errors.type && <small className="muted" style={{ color: '#fecaca' }}>{errors.type}</small>}
         </label>
       </div>
       <label>
-        Description
+        {t('form_description')}
         <div className="textarea-wrap">
           <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4} />
           <button type="button" className={`mic-overlay ${recognizing ? 'active' : ''}`} onClick={toggleVoice} aria-label={recognizing ? 'Stop recording' : 'Start recording'}>
@@ -890,14 +927,14 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
         {errors.description && <small className="muted" style={{ color: '#fecaca' }}>{errors.description}</small>}
       </label>
       <div className="grid two">
-        <label>Date<input type="date" value={(form as any).date || ''} onChange={e => setForm({ ...form, ...(form as any), date: e.target.value } as any)} /></label>
-        <label>Time<input type="time" value={(form as any).time || ''} onChange={e => setForm({ ...form, ...(form as any), time: e.target.value } as any)} /></label>
+        <label>{t('form_date')}<input type="date" value={(form as any).date || ''} onChange={e => setForm({ ...form, ...(form as any), date: e.target.value } as any)} /></label>
+        <label>{t('form_time')}<input type="time" value={(form as any).time || ''} onChange={e => setForm({ ...form, ...(form as any), time: e.target.value } as any)} /></label>
       </div>
       <div className="grid two">
-        <label>Contact<input value={form.contact || ''} onChange={e => setForm({ ...form, contact: e.target.value })} /></label>
+        <label>{t('form_contact')}<input value={form.contact || ''} onChange={e => setForm({ ...form, contact: e.target.value })} /></label>
       </div>
       <label>
-        Location Address
+        {t('form_location_address')}
         <input
           value={form.location?.address || ''}
           onChange={e => {
@@ -908,11 +945,11 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       </label>
       <div className="grid two">
         <label>
-          Latitude
+          {t('form_latitude')}
           <input value={typeof form.location?.lat === 'number' ? Number(form.location?.lat).toFixed(6) : 'null'} readOnly />
         </label>
         <label>
-          Longitude
+          {t('form_longitude')}
           <input value={typeof form.location?.lng === 'number' ? Number(form.location?.lng).toFixed(6) : 'null'} readOnly />
         </label>
       </div>
@@ -920,9 +957,9 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       <div className="grid two" style={{ alignItems: 'start', marginTop: 8 }}>
         <div>
           <div className="muted" style={{ marginBottom: 6 }}>
-            Status: {locStatus}
-            {currAccuracy != null && <span> · Accuracy ± {Math.round(currAccuracy)}m</span>}
-            {lastUpdate != null && <span> · Updated {new Date(lastUpdate).toLocaleTimeString()}</span>}
+            {t('loc_status')}: {locStatus}
+            {currAccuracy != null && <span> · {t('loc_accuracy')} {Math.round(currAccuracy)}m</span>}
+            {lastUpdate != null && <span> · {t('loc_updated')} {new Date(lastUpdate).toLocaleTimeString()}</span>}
           </div>
           
         </div>
@@ -938,12 +975,12 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       </div>
       <div className="actions" style={{ marginTop: 8 }}>
         <button type="button" className="btn sm" onClick={handleUseLocation} disabled={locating}>
-          {locating ? 'Locating…' : 'Use my location'}
+          {locating ? useI18n().t('locating') : t('use_my_location')}
         </button>
       </div>
       <div className="file-row">
         <label className="file">
-          <span className="file-label">Upload Photo</span>
+          <span className="file-label">{t('upload_photo')}</span>
           <input type="file" accept="image/*" onChange={handleFile} ref={fileInputRef} />
         </label>
         {fileName && <span className="file-name" title={fileName}>{fileName}</span>}
@@ -954,7 +991,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
             <button
               type="button"
               className="preview-clear"
-              aria-label="Remove photo"
+              aria-label={t('remove_photo')}
               onClick={() => {
                 setForm(prev => ({ ...prev, photoUrl: '' }))
                 setFileName('')
@@ -970,9 +1007,9 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
         )}
       </div>
       <div className="actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="btn primary" type="submit" disabled={saving}>{saving ? 'Submitting…' : 'Submit'}</button>
+        <button className="btn primary" type="submit" disabled={saving}>{saving ? t('submitting') : t('submit_btn')}</button>
         {saving && submitStage !== 'idle' && (
-          <span className="muted">{submitStage === 'submit' ? 'Sending…' : submitStage === 'upload' ? 'Uploading photo…' : 'Finalizing…'}</span>
+          <span className="muted">{submitStage === 'submit' ? t('sending') : submitStage === 'upload' ? t('uploading_photo') : t('finalizing')}</span>
         )}
         {ok && <span className="muted" style={{ marginLeft: 12 }}>{ok}</span>}
       </div>
@@ -1017,7 +1054,7 @@ function MapView({ items }: { items: Complaint[] }) {
               <iframe title={`map-${c._id}`} src={cardUrl} loading="lazy" style={{ width: '100%', height: 160, border: 0, borderRadius: 10 }} />
               <div className="actions" style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <button className="btn ghost" onClick={() => { setSelectedId(c._id!); const top = document.querySelector('.panel iframe'); if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>Focus on map</button>
-                <a className="btn primary" href={openUrl} target="_blank" rel="noopener noreferrer">Open in Maps</a>
+        <a className="btn primary" href={openUrl} target="_blank" rel="noopener noreferrer">{useI18n().t('open_in_maps')}</a>
               </div>
             </div>
           )
@@ -1030,6 +1067,7 @@ function MapView({ items }: { items: Complaint[] }) {
 
 
 function NotificationsPanel({ token }: { token: string }) {
+  const { t } = useI18n()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -1095,30 +1133,30 @@ function NotificationsPanel({ token }: { token: string }) {
     <div className="panel">
       <div className="notif-header desktop-only" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}><FiBell /> Notifications & Updates</h3>
-          <span className="badge" title="Unread count">{unreadCount} Unread</span>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}><FiBell /> {t('notifications_updates')}</h3>
+          <span className="badge" title="Unread count">{unreadCount} {t('unread')}</span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn ghost" onClick={() => { setLoading(true); notificationsApi.list(token).then(r => { setNotifications(r.notifications); setLoading(false) }).catch(() => setLoading(false)) }}><FiRefreshCw /> Refresh</button>
-          <button className="btn" onClick={markAllRead}><FiCheck /> Mark all read</button>
+          <button className="btn ghost" onClick={() => { setLoading(true); notificationsApi.list(token).then(r => { setNotifications(r.notifications); setLoading(false) }).catch(() => setLoading(false)) }}><FiRefreshCw /> {t('refresh')}</button>
+          <button className="btn" onClick={markAllRead}><FiCheck /> {t('mark_all_read')}</button>
         </div>
       </div>
 
       <div className="notif-toolbar" style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
         <div className="search modern" aria-label="Search notifications" style={{ flex: 1 }}>
           <FiSearch />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search updates" />
-          {q && <button className="clear-btn" onClick={() => setQ('')} title="Clear"><FiX /></button>}
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('notifications_search_placeholder')} />
+          {q && <button className="clear-btn" onClick={() => setQ('')} title={t('clear')}><FiX /></button>}
         </div>
         <div className="filters" style={{ display: 'flex', gap: 8 }}>
-          <span className={`pill ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</span>
-          <span className={`pill ${filter === 'unread' ? 'active' : ''}`} onClick={() => setFilter('unread')}>Unread</span>
+          <span className={`pill ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>{t('filter_all')}</span>
+          <span className={`pill ${filter === 'unread' ? 'active' : ''}`} onClick={() => setFilter('unread')}>{t('filter_unread')}</span>
         </div>
       </div>
 
       {error && <div className="form-error">{error}</div>}
       {loading ? (
-        <div className="muted">Loading notifications…</div>
+        <div className="muted">{t('notifications_loading')}</div>
       ) : (
         <div className="notif-list">
           {filtered.map(n => (
@@ -1129,11 +1167,11 @@ function NotificationsPanel({ token }: { token: string }) {
                 <div className="meta">{new Date(n.createdAt || '').toLocaleString()}</div>
               </div>
               <div className="right">
-                {!n.read && <button className="btn sm" onClick={() => markRead(n._id)}><FiCheck /> Mark read</button>}
+                {!n.read && <button className="btn sm" onClick={() => markRead(n._id)}><FiCheck /> {t('mark_read')}</button>}
               </div>
             </div>
           ))}
-          {filtered.length === 0 && <div className="muted">No notifications to show.</div>}
+          {filtered.length === 0 && <div className="muted">{t('no_notifications')}</div>}
         </div>
       )}
     </div>
@@ -1145,13 +1183,13 @@ function SupportPanel({ token, profile, defaultTab = 'faq' }: { token: string; p
   return (
     <div className="panel support-panel">
       <div className="support-header">
-        <h2>Help & Support</h2>
-        <p className="muted">Find answers in FAQs, chat live, or share feedback.</p>
+        <h2>{useI18n().t('support_heading')}</h2>
+        <p className="muted">{useI18n().t('support_intro')}</p>
       </div>
       <div className="tabs compact">
-        <button className={`tab ${tab === 'faq' ? 'active' : ''}`} onClick={() => setTab('faq')}><FiHelpCircle /> <span>FAQs</span></button>
-        <button className={`tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}><FiMessageCircle /> <span>Live Chat</span></button>
-        <button className={`tab ${tab === 'feedback' ? 'active' : ''}`} onClick={() => setTab('feedback')}><FiStar /> <span>Feedback</span></button>
+        <button className={`tab ${tab === 'faq' ? 'active' : ''}`} onClick={() => setTab('faq')}><FiHelpCircle /> <span>{useI18n().t('faqs')}</span></button>
+        <button className={`tab ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}><FiMessageCircle /> <span>{useI18n().t('tab_chat')}</span></button>
+        <button className={`tab ${tab === 'feedback' ? 'active' : ''}`} onClick={() => setTab('feedback')}><FiStar /> <span>{useI18n().t('tab_feedback')}</span></button>
       </div>
       <div className="tab-body">
         {tab === 'faq' && <FaqSection token={token} />}
@@ -1321,7 +1359,7 @@ function LiveChatWidget({ token }: { token: string }) {
       <div className="chat-widget">
         <div className="chat-header">
           <span>Live Support</span>
-          <button className="btn sm ghost" onClick={() => setOpen(v => !v)}>{open ? <FiX /> : 'Open'}</button>
+          <button className="btn sm ghost" onClick={() => setOpen(v => !v)}>{open ? <FiX /> : useI18n().t('chat_toggle_open')}</button>
         </div>
         {open && (
           <div className="chat-body">
@@ -1331,8 +1369,8 @@ function LiveChatWidget({ token }: { token: string }) {
               ))}
             </div>
             <div className="chat-input">
-              <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your message…" />
-              <button className="btn" onClick={send}><FiSend /> Send</button>
+              <input value={text} onChange={(e) => setText(e.target.value)} placeholder={useI18n().t('type_message_placeholder')} />
+              <button className="btn" onClick={send}><FiSend /> {useI18n().t('send_btn')}</button>
             </div>
           </div>
         )}
@@ -1362,7 +1400,7 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
   return (
     <div className="feedback-card">
       <div className="feedback-header">
-        <h3>Share Feedback</h3>
+        <h3>{useI18n().t('feedback_heading')}</h3>
         <div className="muted">Help us improve your experience</div>
       </div>
       <div className="rating-row">
@@ -1375,7 +1413,7 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
       </div>
       <div className="desc-field">
         <div className="desc-header">
-          <span className="label">Feedback (optional)</span>
+          <span className="label">{useI18n().t('feedback_optional_label')}</span>
           <span className="char-count">{text.length} / 500</span>
         </div>
         <textarea
@@ -1401,7 +1439,7 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
         </label>
       </div>
       <div className="actions">
-        <button className="btn primary" onClick={submit} disabled={!rating}>Send Feedback</button>
+        <button className="btn primary" onClick={submit} disabled={!rating}>{useI18n().t('send_feedback')}</button>
         <button className="btn ghost" onClick={() => { setRating(0); setText(''); setAnonymous(false) }}>Reset</button>
       </div>
       {showOverall && (
@@ -1417,7 +1455,7 @@ function FeedbackSection({ profile }: { profile: ProfileUser | null }) {
       )}
       <div className="feedback-list">
         <div className="list-header">
-          <h4>Recent Feedback</h4>
+          <h4>{useI18n().t('recent_feedback')}</h4>
           <div className="muted">{list.length} entries</div>
         </div>
         <ul className="list" aria-live="polite">

@@ -374,7 +374,12 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
 .dash-navbar .user-label { display: none; font-weight: 600; color: var(--text); }
 .dash-navbar .hamburger { display: none; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
 .dropdown { position: absolute; right: 12px; top: 54px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: grid; gap: 8px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
-.dropdown.wide { min-width: 320px; }
+.dropdown.wide { min-width: 320px; max-height: 60vh; overflow-y: auto; overscroll-behavior: contain; }
+.dropdown.wide .actions { position: sticky; bottom: 0; background: var(--surface); padding-top: 8px; border-top: 1px solid var(--border); }
+.dropdown.wide::-webkit-scrollbar { width: 8px; }
+.dropdown.wide::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 10px; }
+.dropdown.wide::-webkit-scrollbar-thumb { background: #2f3b54; border-radius: 10px; }
+.dropdown.wide::-webkit-scrollbar-thumb:hover { background: #3a4a66; }
 .dropdown button { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.95rem; }
 .dropdown .notif { padding: 10px; border-radius: 10px; border: 1px solid #24324a; margin-bottom: 8px; font-size: 0.9rem; }
 .dropdown .notif.unread { border-color: var(--primary); }
