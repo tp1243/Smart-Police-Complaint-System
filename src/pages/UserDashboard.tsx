@@ -486,7 +486,7 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
     }
     return { title: '', type: '', description: '', contact: '', location: { address: '' } } as any
   })
-  const [fileName, setFileName] = useState('')
+  const [, setFileName] = useState('')
   const [saving, setSaving] = useState(false)
   const [submitStage, setSubmitStage] = useState<'idle' | 'submit' | 'upload' | 'finalize'>('idle')
   const [ok, setOk] = useState('')
@@ -981,26 +981,42 @@ function ComplaintForm({ onSubmit }: { onSubmit: (payload: Complaint) => Promise
       <div className="file-row">
         <label className="file">
           <span className="file-label">{t('upload_photo')}</span>
-          <input type="file" accept="image/*" onChange={handleFile} ref={fileInputRef} />
+          <button type="button" className="file-cta" onClick={() => fileInputRef.current?.click()}>Choose image</button>
+          <input type="file" accept="image/*" onChange={handleFile} ref={fileInputRef} style={{ display: 'none' }} />
         </label>
-        {fileName && <span className="file-name" title={fileName}>{fileName}</span>}
-        
         {form.photoUrl && (
-          <div className="preview-thumb-wrap">
-            <img src={form.photoUrl} alt="image preview" className="preview-thumb" />
-            <button
-              type="button"
-              className="preview-clear"
-              aria-label={t('remove_photo')}
-              onClick={() => {
-                setForm(prev => ({ ...prev, photoUrl: '' }))
-                setFileName('')
-                if (fileInputRef.current) fileInputRef.current.value = ''
-              }}
-            >
-              <FiX />
-            </button>
-          </div>
+          <>
+            <div className="file-chip">
+              <span>Image selected</span>
+              <button
+                type="button"
+                className="chip-clear"
+                aria-label={t('remove_photo')}
+                onClick={() => {
+                  setForm(prev => ({ ...prev, photoUrl: '' }))
+                  setFileName('')
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }}
+              >
+                <FiX />
+              </button>
+            </div>
+            <div className="preview-thumb-wrap">
+              <img src={form.photoUrl} alt="image preview" className="preview-thumb" />
+              <button
+                type="button"
+                className="preview-clear"
+                aria-label={t('remove_photo')}
+                onClick={() => {
+                  setForm(prev => ({ ...prev, photoUrl: '' }))
+                  setFileName('')
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }}
+              >
+                <FiX />
+              </button>
+            </div>
+          </>
         )}
         {submitError && (
           <span className="form-error" role="alert" style={{ marginLeft: 8 }}>{submitError}</span>
