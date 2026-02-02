@@ -78,6 +78,12 @@ export const api = {
   async register(username: string, email: string, password: string, phone?: string): Promise<AuthResponse> {
     return request<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password, phone }) })
   },
+  async registerBegin(username: string, email: string, password: string, phone?: string) {
+    return request<{ ok: boolean }>('/auth/register/begin', { method: 'POST', body: JSON.stringify({ username, email, password, phone }) })
+  },
+  async registerVerify(username: string, email: string, password: string, otp: string, phone?: string): Promise<AuthResponse> {
+    return request<AuthResponse>('/auth/register/verify-otp', { method: 'POST', body: JSON.stringify({ username, email, password, otp, phone }) })
+  },
   async policeRegister(username: string, email: string, password: string, station: string): Promise<AuthPoliceResponse> {
     return request<AuthPoliceResponse>('/police/register', { method: 'POST', body: JSON.stringify({ username, email, password, station }) })
   },
@@ -86,6 +92,15 @@ export const api = {
   },
   async login(email: string, password: string): Promise<AuthResponse> {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+  },
+  async loginBegin(email: string, password: string) {
+    return request<{ ok: boolean }>('/auth/login/begin', { method: 'POST', body: JSON.stringify({ email, password }) })
+  },
+  async loginVerify(email: string, otp: string): Promise<AuthResponse> {
+    return request<AuthResponse>('/auth/login/verify-otp', { method: 'POST', body: JSON.stringify({ email, otp }) })
+  },
+  async otpResend(email: string, purpose: 'register' | 'login') {
+    return request<{ ok: boolean }>('/auth/otp/resend', { method: 'POST', body: JSON.stringify({ email, purpose }) })
   },
   // Removed OTP flows
   async profile(token: string) {

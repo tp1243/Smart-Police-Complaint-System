@@ -11,6 +11,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 import { Strategy as GitHubStrategy } from 'passport-github2'
 import AppleStrategy from 'passport-apple'
 import { initClassifier, classifyText } from './classifier.js'
+import nodemailer from 'nodemailer'
 ////////////
 const app = express()
 app.use(cors({ origin: true }))
@@ -27,6 +28,73 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }))
 app.use(passport.initialize())
 
 const { PORT = 5175, MONGO_URL, JWT_SECRET, FRONTEND_URL = 'https://smart-police-complaint-system.vercel.app' } = process.env
+const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE = 'false', SMTP_SERVICE, SMTP_URL, FROM_EMAIL = 'no-reply@smartpolice.in', AUTH_REQUIRE_OTP = 'true' } = process.env
+let transporter = null
+if (SMTP_URL) {
+  transporter = nodemailer.createTransport(SMTP_URL)
+} else if (SMTP_SERVICE && SMTP_USER && SMTP_PASS) {
+  transporter = nodemailer.createTransport({ service: SMTP_SERVICE, auth: { user: SMTP_USER, pass: SMTP_PASS } })
+} else if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+  transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT || 587),
+    secure: String(SMTP_SECURE).toLowerCase() === 'true',
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  })
+}
+const EMAIL_USER = process.env.EMAIL_USER || process.env['email-user'] || SMTP_USER
+const EMAIL_PASS = process.env.EMAIL_PASS || process.env['email-pass'] || SMTP_PASS
+if (!transporter && EMAIL_USER && EMAIL_PASS) {
+  transporter = nodemailer.createTransport({ service: SMTP_SERVICE || 'gmail', auth: { user: EMAIL_USER, pass: EMAIL_PASS } })
+}
+const FROM_ADDR = (process.env.SMTP_FROM || FROM_EMAIL || EMAIL_USER || SMTP_USER || 'no-reply@smartpolice.in')
+let SMTP_READY = false
+let SMTP_LAST_ERR = null
+async function verifySmtp() {
+  try {
+    if (!transporter) { SMTP_READY = false; SMTP_LAST_ERR = 'No transporter configured'; return }
+    await transporter.verify()
+    SMTP_READY = true
+    SMTP_LAST_ERR = null
+    console.log('SMTP_READY', { service: SMTP_SERVICE || (SMTP_HOST ? 'custom' : (SMTP_URL ? 'url' : 'unknown')), user: EMAIL_USER || SMTP_USER || '' })
+  } catch (e) {
+    SMTP_READY = false
+    SMTP_LAST_ERR = e?.message || 'SMTP verification failed'
+    console.error('SMTP_VERIFY_ERROR', { message: SMTP_LAST_ERR })
+  }
+}
+verifySmtp().catch(() => {})
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim()) }
+function genOtp() { return String(Math.floor(100000 + Math.random() * 900000)) }
+const OTP_EXP_SECONDS = 300
+const RESEND_COOLDOWN_MS = 60000
+const MAX_ATTEMPTS = 5
+const MAX_RESENDS = 3
+async function sendOtp(email, code, purpose) {
+  const subject = purpose === 'login' ? 'Login OTP' : 'Registration OTP'
+  const text = `Your OTP is ${code}. It expires in 5 minutes.`
+  const html = `<div style="font-family:Arial,sans-serif"><h3>Smart Police Complaint System</h3><p>Your OTP is <b>${code}</b>.</p><p>It expires in 5 minutes.</p></div>`
+  if (transporter) {
+    try {
+      await transporter.sendMail({ from: FROM_ADDR, to: email, subject, text, html })
+      return
+    } catch (e) {
+      console.error('OTP_EMAIL_ERROR', { message: e?.message || 'Unknown error' })
+      throw new Error('Mail delivery failed')
+    }
+  }
+  const testAccount = await nodemailer.createTestAccount()
+  const tempTransporter = nodemailer.createTransport({
+    host: testAccount.smtp.host,
+    port: testAccount.smtp.port,
+    secure: testAccount.smtp.secure,
+    auth: { user: testAccount.user, pass: testAccount.pass },
+  })
+  const info = await tempTransporter.sendMail({ from: FROM_ADDR, to: email, subject, text, html })
+  const url = nodemailer.getTestMessageUrl(info)
+  console.log('OTP_DEV_LINK', { email, url })
+  console.log('OTP_DEV_CODE', { email, code })
+}
 if (!MONGO_URL) {
   console.error('Missing MONGO_URL in .env')
   process.exit(1)
@@ -61,6 +129,19 @@ const User = mongoose.model('User', userSchema)
 function createToken(user) {
   return jwt.sign({ id: user._id, username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
 }
+
+const otpSchema = new mongoose.Schema({
+  email: { type: String, required: true, lowercase: true, trim: true },
+  purpose: { type: String, required: true, enum: ['register', 'login'] },
+  otpHash: { type: String, required: true },
+  attempts: { type: Number, default: 0 },
+  resendCount: { type: Number, default: 0 },
+  lastSentAt: { type: Date },
+  createdAt: { type: Date, default: Date.now, expires: OTP_EXP_SECONDS },
+  lockedUntil: { type: Date },
+}, { timestamps: true })
+otpSchema.index({ email: 1, purpose: 1 }, { unique: false })
+const OtpChallenge = mongoose.model('OtpChallenge', otpSchema)
 
 // Police officer schema and helpers
 const policeOfficerSchema = new mongoose.Schema({
@@ -248,10 +329,12 @@ app.get('/api/oauth/fail', (req, res) => res.status(401).send('OAuth failed'))
 // Auth routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password, phone } = req.body
+    const { username, email: emailInput, password, phone } = req.body
+    const email = String(emailInput || '').toLowerCase().trim()
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' })
     }
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' })
     const existing = await User.findOne({ email })
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' })
@@ -276,6 +359,79 @@ app.post('/api/auth/register', async (req, res) => {
   }
 })
 
+app.post('/api/auth/register/begin', async (req, res) => {
+  try {
+    const { username, email: emailInput, password, phone } = req.body || {}
+    const email = String(emailInput || '').toLowerCase().trim()
+    if (!username || !email || !password) return res.status(400).json({ error: 'All fields are required' })
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' })
+    const existing = await User.findOne({ email })
+    if (existing) return res.status(409).json({ error: 'Email already registered' })
+    let challenge = await OtpChallenge.findOne({ email, purpose: 'register' })
+    const now = Date.now()
+    if (challenge && challenge.lockedUntil && now < new Date(challenge.lockedUntil).getTime()) return res.status(429).json({ error: 'Too many attempts. Try later.' })
+    if (challenge && challenge.lastSentAt && now - new Date(challenge.lastSentAt).getTime() < RESEND_COOLDOWN_MS) {
+      const wait = Math.ceil((RESEND_COOLDOWN_MS - (now - new Date(challenge.lastSentAt).getTime())) / 1000)
+      return res.status(429).json({ error: `Please wait ${wait}s before requesting another OTP` })
+    }
+    const code = genOtp()
+    const otpHash = await bcrypt.hash(code, 10)
+    await OtpChallenge.updateOne({ email, purpose: 'register' }, { $set: { otpHash, attempts: 0, resendCount: 0, lastSentAt: new Date(), lockedUntil: null, createdAt: new Date() } }, { upsert: true })
+    const ip = (req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.socket?.remoteAddress || '').trim()
+    const ua = req.headers['user-agent'] || ''
+    await sendOtp(email, code, 'register')
+    console.log('OTP_SENT', { email, purpose: 'register', ip, ua, at: new Date().toISOString() })
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('Register begin error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+app.post('/api/auth/register/verify-otp', async (req, res) => {
+  try {
+    const { username, email: emailInput, password, phone, otp } = req.body || {}
+    const email = String(emailInput || '').toLowerCase().trim()
+    if (!username || !email || !password || !otp) return res.status(400).json({ error: 'All fields are required' })
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' })
+    const challenge = await OtpChallenge.findOne({ email, purpose: 'register' })
+    const now = Date.now()
+    if (!challenge) return res.status(400).json({ error: 'OTP not found' })
+    if (challenge.lockedUntil && now < new Date(challenge.lockedUntil).getTime()) return res.status(429).json({ error: 'Too many attempts. Try later.' })
+    if (challenge.createdAt && now - new Date(challenge.createdAt).getTime() > OTP_EXP_SECONDS * 1000) {
+      console.log('OTP_EXPIRED', { email, purpose: 'register', at: new Date().toISOString() })
+      return res.status(400).json({ error: 'OTP expired' })
+    }
+    const ok = await bcrypt.compare(String(otp), challenge.otpHash)
+    if (!ok) {
+      const attempts = (challenge.attempts || 0) + 1
+      challenge.attempts = attempts
+      if (attempts >= MAX_ATTEMPTS) challenge.lockedUntil = new Date(now + 10 * 60000)
+      await challenge.save()
+      console.log('OTP_VERIFIED_FAIL', { email, purpose: 'register', attempts, at: new Date().toISOString() })
+      return res.status(401).json({ error: 'Invalid OTP' })
+    }
+    const existing = await User.findOne({ email })
+    if (existing) return res.status(409).json({ error: 'Email already registered' })
+    const hashed = await bcrypt.hash(password, 10)
+    let normalizedPhone = undefined
+    if (phone && typeof phone === 'string') {
+      const trimmed = phone.trim()
+      const digits = trimmed.replace(/\D/g, '')
+      if (digits.startsWith('91')) normalizedPhone = `+${digits}`
+      else if (trimmed.startsWith('+')) normalizedPhone = trimmed
+      else if (digits.length >= 10) normalizedPhone = `+91${digits.slice(-10)}`
+    }
+    const user = await User.create({ username, email, password: hashed, phone: normalizedPhone })
+    try { await OtpChallenge.deleteMany({ email, purpose: 'register' }) } catch {}
+    const token = createToken(user)
+    console.log('OTP_VERIFIED_SUCCESS', { email, purpose: 'register', at: new Date().toISOString() })
+    return res.json({ token, user: { id: user._id, username: user.username, email: user.email } })
+  } catch (err) {
+    console.error('Register verify error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body
@@ -290,6 +446,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (!match) {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
+    if (String(AUTH_REQUIRE_OTP).toLowerCase() === 'true') {
+      return res.json({ pendingOtp: true })
+    }
     const token = createToken(user)
     return res.json({ token, user: { id: user._id, username: user.username, email: user.email } })
   } catch (err) {
@@ -298,6 +457,104 @@ app.post('/api/auth/login', async (req, res) => {
   }
 })
 
+app.post('/api/auth/login/begin', async (req, res) => {
+  try {
+    const { email, password } = req.body || {}
+    const normalized = String(email || '').toLowerCase().trim()
+    if (!normalized || !password) return res.status(400).json({ error: 'Email and password required' })
+    if (!isValidEmail(normalized)) return res.status(400).json({ error: 'Invalid email format' })
+    const user = await User.findOne({ email: normalized })
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' })
+    const match = await bcrypt.compare(password, user.password)
+    if (!match) return res.status(401).json({ error: 'Invalid credentials' })
+    let challenge = await OtpChallenge.findOne({ email: normalized, purpose: 'login' })
+    const now = Date.now()
+    if (challenge && challenge.lockedUntil && now < new Date(challenge.lockedUntil).getTime()) return res.status(429).json({ error: 'Too many attempts. Try later.' })
+    if (challenge && challenge.lastSentAt && now - new Date(challenge.lastSentAt).getTime() < RESEND_COOLDOWN_MS) {
+      const wait = Math.ceil((RESEND_COOLDOWN_MS - (now - new Date(challenge.lastSentAt).getTime())) / 1000)
+      return res.status(429).json({ error: `Please wait ${wait}s before requesting another OTP` })
+    }
+    const code = genOtp()
+    const otpHash = await bcrypt.hash(code, 10)
+    await OtpChallenge.updateOne({ email: normalized, purpose: 'login' }, { $set: { otpHash, attempts: 0, resendCount: 0, lastSentAt: new Date(), lockedUntil: null, createdAt: new Date() } }, { upsert: true })
+    const ip = (req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.socket?.remoteAddress || '').trim()
+    const ua = req.headers['user-agent'] || ''
+    await sendOtp(normalized, code, 'login')
+    console.log('OTP_SENT', { email: normalized, purpose: 'login', ip, ua, at: new Date().toISOString() })
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('Login begin error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+app.post('/api/auth/login/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {}
+    const normalized = String(email || '').toLowerCase().trim()
+    if (!normalized || !otp) return res.status(400).json({ error: 'Missing fields' })
+    if (!isValidEmail(normalized)) return res.status(400).json({ error: 'Invalid email format' })
+    const challenge = await OtpChallenge.findOne({ email: normalized, purpose: 'login' })
+    const now = Date.now()
+    if (!challenge) return res.status(400).json({ error: 'OTP not found' })
+    if (challenge.lockedUntil && now < new Date(challenge.lockedUntil).getTime()) return res.status(429).json({ error: 'Too many attempts. Try later.' })
+    if (challenge.createdAt && now - new Date(challenge.createdAt).getTime() > OTP_EXP_SECONDS * 1000) {
+      console.log('OTP_EXPIRED', { email: normalized, purpose: 'login', at: new Date().toISOString() })
+      return res.status(400).json({ error: 'OTP expired' })
+    }
+    const ok = await bcrypt.compare(String(otp), challenge.otpHash)
+    if (!ok) {
+      const attempts = (challenge.attempts || 0) + 1
+      challenge.attempts = attempts
+      if (attempts >= MAX_ATTEMPTS) challenge.lockedUntil = new Date(now + 10 * 60000)
+      await challenge.save()
+      console.log('OTP_VERIFIED_FAIL', { email: normalized, purpose: 'login', attempts, at: new Date().toISOString() })
+      return res.status(401).json({ error: 'Invalid OTP' })
+    }
+    const user = await User.findOne({ email: normalized })
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' })
+    try { await OtpChallenge.deleteMany({ email: normalized, purpose: 'login' }) } catch {}
+    const token = createToken(user)
+    console.log('OTP_VERIFIED_SUCCESS', { email: normalized, purpose: 'login', at: new Date().toISOString() })
+    return res.json({ token, user: { id: user._id, username: user.username, email: user.email } })
+  } catch (err) {
+    console.error('Login verify error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+app.post('/api/auth/otp/resend', async (req, res) => {
+  try {
+    const { email, purpose } = req.body || {}
+    const normalized = String(email || '').toLowerCase().trim()
+    if (!normalized || !purpose) return res.status(400).json({ error: 'Missing fields' })
+    if (!isValidEmail(normalized)) return res.status(400).json({ error: 'Invalid email format' })
+    const challenge = await OtpChallenge.findOne({ email: normalized, purpose })
+    const now = Date.now()
+    if (!challenge) return res.status(400).json({ error: 'OTP not found' })
+    if (challenge.lockedUntil && now < new Date(challenge.lockedUntil).getTime()) return res.status(429).json({ error: 'Too many attempts. Try later.' })
+    if (challenge.lastSentAt && now - new Date(challenge.lastSentAt).getTime() < RESEND_COOLDOWN_MS) {
+      const wait = Math.ceil((RESEND_COOLDOWN_MS - (now - new Date(challenge.lastSentAt).getTime())) / 1000)
+      return res.status(429).json({ error: `Please wait ${wait}s before requesting another OTP` })
+    }
+    if ((challenge.resendCount || 0) >= MAX_RESENDS) return res.status(429).json({ error: 'Resend limit reached' })
+    const code = genOtp()
+    const otpHash = await bcrypt.hash(code, 10)
+    challenge.otpHash = otpHash
+    challenge.resendCount = (challenge.resendCount || 0) + 1
+    challenge.lastSentAt = new Date()
+    challenge.createdAt = new Date()
+    await challenge.save()
+    const ip = (req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || req.socket?.remoteAddress || '').trim()
+    const ua = req.headers['user-agent'] || ''
+    await sendOtp(normalized, code, purpose)
+    console.log('OTP_RESENT', { email: normalized, purpose, ip, ua, at: new Date().toISOString(), count: challenge.resendCount })
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('OTP resend error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
 // Removed 2FA OTP endpoints
 
 // Police auth routes
@@ -375,6 +632,15 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
 })
 
 app.get('/api/health', (req, res) => res.json({ ok: true }))
+app.get('/api/health/smtp', (req, res) => {
+  res.json({
+    ready: SMTP_READY,
+    from: FROM_ADDR,
+    user: EMAIL_USER || SMTP_USER || '',
+    service: SMTP_SERVICE || (SMTP_HOST ? 'custom' : (SMTP_URL ? 'url' : 'unknown')),
+    error: SMTP_LAST_ERR,
+  })
+})
 
 // Geo helpers
 function isValidCoord(lat, lng) {

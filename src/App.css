@@ -370,6 +370,42 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
 .dash-navbar .btn.sm { padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; }
 .dash-right { display: flex; align-items: center; gap: 14px; position: relative; }
 .dash-right .avatar, .dash-right .bell { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; font-size: 1.1rem; color: var(--text); }
+/* Biometric modal */
+.biometric-modal { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+.biometric-card { width: min(960px, 92vw); background: rgba(17,24,39,0.8); border: 1px solid #24324a; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,0,0,0.5); overflow: hidden; }
+.biometric-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #24324a; background: rgba(255,255,255,0.03); }
+.brand-mini { display: flex; align-items: center; gap: 10px; color: var(--text); }
+.brand-mini svg { color: var(--primary); font-size: 24px; }
+.brand-title { font-weight: 700; letter-spacing: 0.6px; }
+.brand-sub { color: var(--muted); font-size: 0.85rem; }
+.close-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: #0b1324; border: 1px solid #263244; color: var(--text); cursor: pointer; }
+.close-btn:hover { color: var(--primary); border-color: var(--primary); }
+.biometric-body { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 0; }
+.scan-left { padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; position: relative; }
+.scan-frame { position: relative; width: 360px; height: 360px; border-radius: 24px; background: radial-gradient(closest-side, rgba(14,165,233,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 0 120px rgba(26,83,255,0.08); }
+.scan-glow { position: absolute; inset: -40px; background: radial-gradient(600px 600px at 50% 30%, rgba(14,165,233,0.18), transparent 60%), radial-gradient(600px 600px at 50% 70%, rgba(99,102,241,0.12), transparent 60%); filter: blur(24px); }
+.scan-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+.scan-canvas { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: lighten; opacity: 0.7; }
+.progress-ring { position: absolute; inset: 0; border-radius: 24px; }
+.scan-icon { position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); color: var(--text); }
+.guidance { color: var(--text); opacity: 0.9; }
+.trust { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.93rem; }
+.scan-right { padding: 24px; border-left: 1px solid #24324a; background: rgba(255,255,255,0.02); }
+.scan-right h3 { margin: 0 0 6px; }
+.scan-right .muted { color: var(--muted); margin-bottom: 12px; }
+.scan-steps { list-style: none; padding: 0; margin: 10px 0 16px; display: grid; gap: 8px; }
+.scan-steps li { background: rgba(255,255,255,0.04); border: 1px solid #24324a; border-radius: 10px; padding: 10px 12px; color: var(--muted); }
+.scan-steps li.done { color: var(--text); border-color: var(--primary); box-shadow: inset 0 0 20px rgba(14,165,233,0.08); }
+.actions { display: flex; gap: 10px; }
+.lockout { margin-top: 10px; color: #fecaca; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.5); padding: 8px 10px; border-radius: 10px; }
+.biometric-card .btn.primary { background: linear-gradient(135deg, #22d3ee, #6366f1); color: #04111f; }
+.biometric-card .btn.primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.biometric-card .btn.ghost { border-color: #334155; }
+.biometric-card .btn.ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(14,165,233,0.05); }
+@media (max-width: 900px) {
+  .biometric-body { grid-template-columns: 1fr; }
+  .scan-right { border-left: none; border-top: 1px solid #24324a; }
+}
 .dash-right .badge { position: absolute; top: -4px; right: -4px; background: var(--accent); color: #220c0c; border-radius: 8px; padding: 3px 7px; font-size: 13px; font-weight: 600; }
 .dash-navbar .user-label { display: none; font-weight: 600; color: var(--text); }
 .dash-navbar .hamburger { display: none; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
@@ -920,6 +956,27 @@ body.light-theme { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, 
   .otp-input-row { display: flex; align-items: center; justify-content: center; }
   .otp-input { width: 220px; letter-spacing: 6px; text-align: center; font-size: 20px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18); background: rgba(16,18,22,0.6); color: var(--text); }
   .form-error.small { font-size: 0.9rem; margin-top: 8px; }
+  /* Responsive segmented OTP inputs */
+  .otp-grid { display: flex; align-items: center; justify-content: center; gap: clamp(6px, 2vw, 10px); flex-wrap: nowrap; }
+  .otp-cell {
+    width: clamp(38px, 12vw, 56px);
+    height: clamp(44px, 12vw, 56px);
+    text-align: center;
+    font-size: clamp(18px, 4.5vw, 22px);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(16,18,22,0.6);
+    color: var(--text);
+  }
+  .otp-cell:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.35); }
+  @media (max-width: 360px) {
+    .otp-grid { gap: 6px; }
+    .otp-cell {
+      width: clamp(34px, 12vw, 48px);
+      height: clamp(38px, 11vw, 48px);
+      font-size: clamp(16px, 4vw, 20px);
+    }
+  }
 
   /* Register phone input with country prefix */
   .auth-form .phone-row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }

@@ -1,21 +1,20 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { api } from '../services/api'
 import AuthShowcase from '../components/AuthShowcase'
 import loginimg from '../assets/loginimg.png'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 import SocialAuth from '../components/SocialAuth'
 import AuthHeader from '../components/AuthHeader'
-
+import OtpModal from '../components/OtpModal'
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
+  const [otpOpen, setOtpOpen] = useState(false)
   
 
   useEffect(() => {
@@ -24,9 +23,7 @@ export default function Login() {
     const userStr = params.get('user')
     if (token) {
       localStorage.setItem('token', token)
-      if (userStr) {
-        try { localStorage.setItem('user', userStr) } catch {}
-      }
+      if (userStr) { try { localStorage.setItem('user', userStr) } catch {} }
       navigate('/user')
     }
   }, [location.search])
@@ -36,30 +33,7 @@ export default function Login() {
     e.preventDefault()
     setError('')
     if (!email || !password) { setError('Please fill in all fields'); return }
-    setLoading(true)
-    try {
-      const res = await api.login(email, password)
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(res.user))
-      navigate('/user')
-    } catch (err: any) {
-      const msg = err?.message || ''
-      if (msg.toLowerCase().includes('timeout')) {
-        await new Promise(r => setTimeout(r, 800))
-        try {
-          const res = await api.login(email, password)
-          localStorage.setItem('token', res.token)
-          localStorage.setItem('user', JSON.stringify(res.user))
-          navigate('/user')
-        } catch (e2: any) {
-          setError(e2?.message || 'Login failed')
-        }
-      } else {
-        setError(msg || 'Login failed')
-      }
-    } finally {
-      setLoading(false)
-    }
+    setOtpOpen(true)
   }
 
   // OTP handling moved to dedicated VerifyOtp page
@@ -95,7 +69,7 @@ export default function Login() {
           </div>
           {error && <div className="form-error">{error}</div>}
           <div className="form-actions">
-            <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Signing in...' : 'Login'}</button>
+            <button type="submit" className="btn primary">Login</button>
             <Link className="btn ghost" to="/register">Create Account</Link>
           </div>
           <SocialAuth />
@@ -104,6 +78,21 @@ export default function Login() {
         
       </div>
       </div>
+      <OtpModal
+        open={otpOpen}
+        purpose="login"
+        email={email}
+        beginPayload={{ password }}
+        onClose={() => setOtpOpen(false)}
+        onSuccess={(res: any) => {
+          try {
+            localStorage.setItem('token', res.token)
+            localStorage.setItem('user', JSON.stringify(res.user))
+          } catch {}
+          setOtpOpen(false)
+          navigate('/user')
+        }}
+      />
     </>
   )
 }
